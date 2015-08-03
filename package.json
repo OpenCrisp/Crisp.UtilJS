@@ -1,0 +1,46 @@
+{
+	"name": "crisp-util",
+	"title": "OpenCrisp UtilJS",
+	"description": "The Crisp.UtilJS Repository is an collection of the basically OpenCrisp modules",
+	"version": "0.1.0",
+	"homepage": "http://opencrisp.wca.at",
+	"author": {
+		"name": "Fabian Schmid",
+		"email": "fabian.schmid@wca.at",
+		"url": "http://fabian.wca.at"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/OpenCrisp/Crisp.UtilJS.git"
+	},
+	"bugs": "https://github.com/OpenCrisp/Crisp.UtilJS/issues",
+	"license": "MIT",
+	"licenses": [{
+		"type": "MIT",
+		"url": "https://github.com/OpenCrisp/Crisp.UtilJS/blob/master/LICENSE"
+	}],
+	"engines": {
+		"node": ">= 0.10.15"
+	},
+	"scripts": {
+		"test": "grunt test"
+	},
+	"dependencies": {
+		"crisp-base": "latest",
+        "crisp-create": "latest",
+        "crisp-event": "latest",
+        "crisp-path": "latest"
+    },
+    "devDependencies": {
+		"grunt-contrib-jshint": "~0.10.0",
+		"grunt-contrib-qunit": "~0.5.2",
+		"grunt-contrib-concat": "~0.5.0",
+		"grunt-contrib-uglify": "~0.5.1",
+		"grunt-contrib-watch": "~0.6.1",
+		"grunt-contrib-clean": "~0.5.0",
+		"grunt-contrib-nodeunit": "~0.4.1",
+		"grunt-jsdoc": "~0.6.7",
+		"grunt": "~0.4.5"
+	},
+	"keywords": ["OpenCrisp","utility"]
+}

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>QUnit crisp-util_example_test</title>
+  <link rel="stylesheet" href="../libs/qunit/qunit-1.18.0.css">
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+  <script src="../libs/qunit/qunit-1.18.0.js"></script>
+
+  <script src="../node_modules/crisp-base/dist/crisp-base.js"></script>
+  <script src="../node_modules/crisp-create/dist/crisp-create.js"></script>
+  <script src="../node_modules/crisp-event/dist/crisp-event.js"></script>
+  <script src="../node_modules/crisp-path/dist/crisp-path.js"></script>
+  <!-- <script src="../src/CreateJS.js"></script> -->
+  <script>
+  var exports = {};
+  </script>
+  <script src="../test/UtilJS_test.js"></script>
+  <script>
+  for (var item in exports) {
+    QUnit.test( item, exports[item] );
+  }
+  </script>
+</body>
+</html>
