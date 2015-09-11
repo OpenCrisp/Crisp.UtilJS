@@ -1,0 +1,29 @@
+{
+    "name": "crisp-util",
+    "main": "dist/crisp-util.js",
+    "version": "0.1.3",
+    "homepage": "https://github.com/OpenCrisp/Crisp.UtilJS",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/OpenCrisp/Crisp.UtilJS.git"
+    },
+    "authors": [
+        "Fabian Schmid <fabian.schmid@wca.at>"
+    ],
+    "description": "The Crisp.UtilJS Repository is an collection of the basically OpenCrisp modules",
+    "moduleType": [
+        "globals"
+    ],
+    "keywords": [
+        "OpenCrisp",
+        "async"
+    ],
+    "license": "MIT",
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "test",
+        "tests"
+    ]
+}
