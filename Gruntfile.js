@@ -13,8 +13,11 @@ module.exports = function(grunt) {
 			' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */\n',
 		// Task configuration.
 		clean: {
-			files: ['dist','doc']
-		},
+			build: ['dist','doc'],
+            test_orig: ['test_nodeunit/*_run.js','test_qunit/*_run.html'],
+            test_dist: ['test_nodeunit_dist/*_run.js','test_qunit_dist/*_run.html'],
+            test_min: ['test_nodeunit_min/*_run.js','test_qunit_min/*_run.html']
+        },
 		concat: {
 			options: {
 				banner: '<%= banner %>',
@@ -57,9 +60,9 @@ module.exports = function(grunt) {
 			},
 			test: {
 				options: {
-					jshintrc: 'test/.jshintrc'
+					jshintrc: 'test_/.jshintrc'
 				},
-				src: ['test/**/*.js']
+				src: ['test_/**/*.js']
 			},
 		},
 		watch: {
@@ -76,12 +79,71 @@ module.exports = function(grunt) {
 				tasks: ['jshint:test', 'qunit']
 			},
 		},
-		qunit: {
-			files: ['test_qunit/**/*.html']
-		},
-		nodeunit: {
-			all: ['test_nodeunit/*.js']
-		},
+
+        createunit: {
+            nodeunit_orig: {
+                options: {
+                    destination: 'test_nodeunit',
+                    template: 'test_/template/nodeunit.tpl'
+                },
+                src: [
+                    'test_/*_test.js',
+                    'node_modules/crisp-base/test_/*_test.js'
+                ]
+            },
+            nodeunit_dist: {
+                options: {
+                    destination: 'test_nodeunit_dist',
+                    template: 'test_/template/nodeunit_dist.tpl'
+                },
+                src: 'test_/*_test.js'
+            },
+            nodeunit_min: {
+                options: {
+                    destination: 'test_nodeunit_min',
+                    template: 'test_/template/nodeunit_min.tpl'
+                },
+                src: 'test_/*_test.js'
+            },
+            qunit_orig: {
+                options: {
+                    destination: 'test_qunit',
+                    template: 'test_/template/qunit.tpl',
+                    run_sufix: '_run.html'
+                },
+                src: [
+                    'test_/*_test.js',
+                    'node_modules/crisp-base/test_/*_test.js'
+                ]
+            },
+            qunit_dist: {
+                options: {
+                    destination: 'test_qunit_dist',
+                    template: 'test_/template/qunit_dist.tpl',
+                    run_sufix: '_run.html'
+                },
+                src: 'test_/*_test.js'
+            },
+            qunit_min: {
+                options: {
+                    destination: 'test_qunit_min',
+                    template: 'test_/template/qunit_min.tpl',
+                    run_sufix: '_run.html'
+                },
+                src: 'test_/*_test.js'
+            }
+        },
+        
+        nodeunit: {
+            orig: ['test_nodeunit/*.js'],
+            dist: ['test_nodeunit_dist/*.js'],
+            min: ['test_nodeunit_min/*.js']
+        },
+        qunit: {
+            orig: ['test_qunit/**/*.html'],
+            dist: ['test_qunit_dist/**/*.html'],
+            min: ['test_qunit_min/**/*.html']
+        },
 
 		jsdoc : {
 			dist : {
@@ -104,10 +166,15 @@ module.exports = function(grunt) {
 	grunt.loadNpmTasks('grunt-contrib-watch');
 	grunt.loadNpmTasks('grunt-contrib-nodeunit');
 
+    grunt.loadNpmTasks('grunt-createunit');
 	grunt.loadNpmTasks('grunt-jsdoc');
 
-	// Default task.
-	grunt.registerTask('default', ['jshint', 'qunit', 'nodeunit', 'clean', 'concat', 'uglify', 'jsdoc']);
-	grunt.registerTask('test', ['jshint', 'qunit', 'nodeunit']);
+    grunt.registerTask('default', ['jshint', 'test_orig', 'clean:build', 'concat', 'uglify', 'createunit:qunit_dist', 'qunit:dist', 'createunit:qunit_min', 'qunit:min', 'jsdoc']);
 
+    grunt.registerTask('test_orig', ['jshint:test', 'clean:test_orig', 'createunit:nodeunit_orig', 'nodeunit:orig', 'createunit:qunit_orig', 'qunit:orig']);
+    grunt.registerTask('test_dist', ['jshint:test', 'clean:test_dist', 'createunit:nodeunit_dist', 'nodeunit:dist', 'createunit:qunit_dist', 'qunit:dist']);
+    grunt.registerTask('test_min', ['jshint:test', 'clean:test_min', 'createunit:nodeunit_min', 'nodeunit:min', 'createunit:qunit_min', 'qunit:min']);
+
+    grunt.registerTask('test', ['nodeunit:dist', 'qunit']);
+    grunt.registerTask('t', ['test_orig']);
 };

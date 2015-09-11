@@ -1,7 +1,7 @@
-/*! OpenCrisp UtilJS - v0.1.0 - 2015-08-04
-* http://opencrisp.wca.at
+/*! OpenCrisp UtilJS - v0.1.3 - 2015-09-11
+* https://github.com/OpenCrisp/Crisp.UtilJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
-/*! OpenCrisp BaseJS - v0.2.4 - 2015-08-04
+/*! OpenCrisp BaseJS - v0.2.9 - 2015-08-18
 * http://opencrisp.wca.at
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 /**
@@ -22,7 +22,18 @@
      * @example
      * toType.call('a') // [object String]
      */
-    var toType = Object.prototype.toString;
+    var toTypeString = Object.prototype.toString;
+
+    /**
+     * @private
+     * @type {external:RegExp}
+     * @memberOf util
+     *
+     * @example
+     * '[object String]'.replace( regTypeTrim, '$1' ); // 'String'
+     *  toType.call('a').replace( regTypeTrim, '$1' ); // 'String'
+     */
+    var regTypeTrim = /^\[object ([a-z]+)\]$/i;
 
 
     /**
@@ -58,7 +69,12 @@
      * setTimeout( utilTickCall, 0, callback, self, opt );
      */
     function utilTickCall( callback, self, opt ) {
-        var args = opt.args || opt;
+        var args = opt.args;
+
+        if ( args === undefined ) {
+            args = opt;
+        }
+        
         args = [].concat( args );
 
         callback.apply( self, args );
@@ -68,6 +84,24 @@
         }
     }
 
+    function toType( object ) {
+        var type = toTypeString.call( object ).replace( regTypeTrim, "$1" );
+
+        if ( ['global', 'Null', 'DOMWindow'].indexOf( type ) !== -1 ) {
+            type = 'Undefined';
+        }
+
+        return type;
+    }
+
+    function isType( object, type ) {
+        if ( type === 'field' ) {
+            return isType( object, 'String' ) || isType( object, 'Number' ) || isType( object, 'Boolean' ) || isType( object, 'Date' ) || isType( object, 'RegExp' );
+        }
+        else {
+            return toType( object ) === type;
+        }
+    }
 
     /**
      * Global Crisp Object
@@ -198,73 +232,20 @@
 
 
         /**
+         * @deprecated use {module:BaseJS.type}
+         * @function module:BaseJS.toType
          * @param       {AnyItem} object
-         * 
-         * @this        module:BaseJS
-         * @return      {external:String}
-         *
-         * @memberOf    module:BaseJS
-         *
-         * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
-         * 
-         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#totype|use toType}
-         *
-         * @example
-         * Crisp.toType("") // "[object String]"
-         * Crisp.toType(0) // "[object Number]"
          */
-        toType: function( object ) {
-            return toType.call( object );
-        },
+        toType: toType,
 
 
         /**
-         * check type of object
+         * @deprecated use {module:BaseJS.type}
+         * @function module:BaseJS.isType
          * @param       {AnyItem}         object
          * @param       {external:String} type
-         * 
-         * @this        module:BaseJS
-         * @returns     {external:Boolean}
-         *
-         * @memberOf    module:BaseJS
-         *
-         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#istype|use isType}
-         * 
-         * @example
-         * Crisp.isType("", "String"); // true
-         * Crisp.isType(0, "Number"); // true
-         * 
-         * Crisp.isType({}, "String"); // false
-         * Crisp.isType([], "Number"); // false
          */
-        isType: function( object, type ) {
-            if ( type === 'Undefined' ) {
-                return ['[object Undefined]', '[object DOMWindow]'].indexOf( toType.call( object ) ) !== -1;
-            }
-            else {
-                return toType.call( object ) === '[object '.concat( type, ']' );
-            }
-        },
-
-
-        /**
-         * @param       {external:String} name name of Math Function
-         * 
-         * @this        module:BaseJS
-         * @return      {external:Number}
-         *
-         * @memberOf    module:BaseJS
-         *
-         * @see external:String#toMath
-         * 
-         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#tomath|use toMath}
-         *
-         * @example
-         * Crisp.toMath.call( -1, 'abs'); // 1
-         */
-        toMath: function( name ) {
-            return Math[ name ].call( Math, this );
-        },
+        isType: isType,
 
 
         /**
@@ -287,6 +268,7 @@
             // TODO add more data formates (XML,CSV,HTML) for create Crisp.to('xml');
             return JSON.stringify( this );
         },
+
 
         /**
          * parse data format
@@ -311,6 +293,100 @@
 
 
         /**
+         * get or check ths small type name of objects
+         * @param       {external:String} [type]
+         * 
+         * @this        module:BaseJS
+         * @returns     {external:Boolean|external:String}
+         *
+         * @memberOf    module:BaseJS
+         *
+         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#type|use type}
+         * 
+         * @example
+         * // GET the small type name of JavaScript objects
+         * Crisp.type.call( '' );          // 'String'
+         * Crisp.type.call( 0 );           // 'Number'
+         * Crisp.type.call( true );        // 'Boolean'
+         * Crisp.type.call( new Date() );  // 'Date'
+         * Crisp.type.call( {} );          // 'Object'
+         * Crisp.type.call( [] );          // 'Array'
+         * Crisp.type.call( /a/g );        // 'RegExp'
+         * 
+         * Crisp.type.call( null );        // 'Undefined'
+         * Crisp.type.call( undefined );   // 'Undefined'
+         * 
+         * // CHECK the small type name of JavaScript objects
+         * Crisp.type.call( '',         'String' );     // true
+         * Crisp.type.call( 0,          'Number' );     // true
+         * Crisp.type.call( true,       'Boolean' );    // true
+         * Crisp.type.call( new Date(), 'Date' );       // true
+         * Crisp.type.call( {},         'Object' );     // true
+         * Crisp.type.call( [],         'Array' );      // true
+         * Crisp.type.call( /a/g,       'RegExp' );     // true
+         * 
+         * Crisp.type.call( null,       'Undefined' );  // true
+         * Crisp.type.call( undefined,  'Undefined' );  // true
+         * 
+         * // CHECH group of object type
+         * Crisp.type.call(         '', 'field' );  // true
+         * Crisp.type.call(          0, 'field' );  // true
+         * Crisp.type.call(       true, 'field' );  // true
+         * Crisp.type.call( new Date(), 'field' );  // true
+         * Crisp.type.call(       /a/g, 'field' );  // true
+         */
+        type: function( type ) {
+            if ( type ) {
+                return isType( this, type );
+            }
+            else {
+                return toType( this );
+            }
+        },
+
+
+        /**
+         * @deprecated
+         * @param       {external:String} name name of Math Function
+         * 
+         * @this        module:BaseJS
+         * @return      {external:Number}
+         *
+         * @memberOf    module:BaseJS
+         *
+         * @see external:String#toMath
+         * 
+         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#tomath|use toMath}
+         *
+         * @example
+         * Crisp.toMath.call( -1, 'abs'); // 1
+         */
+        toMath: function( name ) {
+            console.warn('Crisp.toMath is not longer supportet! Use Crisp.math');
+            return Math[ name ].call( Math, this );
+        },
+
+        /**
+         * @param       {external:String} name name of Math Function
+         * 
+         * @this        module:BaseJS
+         * @return      {external:Number}
+         *
+         * @memberOf    module:BaseJS
+         *
+         * @see external:String#xMath
+         * 
+         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#tomath|use math}
+         *
+         * @example
+         * Crisp.math.call( -1, 'abs'); // 1
+         */
+        math: function( name ) {
+            return Math[ name ].call( Math, this );
+        },
+
+
+        /**
          * create JSON data format
          * 
          * @deprecated change to {@linkcode module:BaseJS.to|Crisp.to('json')}
@@ -325,6 +401,7 @@
          * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#tojson|use toJson}
          */
         toJson: function( prity ) {
+            console.warn('Crisp.toJson is not longer supportet! Use Crisp.to');
             return prity ? JSON.stringify( this, null, "\t" ) : JSON.stringify( this );
         },
 
@@ -348,6 +425,7 @@
          * Crisp.parseJson.call('{"a":"A"}'); // { "a": "A" }
          */
         parseJson: function() {
+            console.warn('Crisp.parseJson is not longer supportet! Use Crisp.parse');
             return JSON.parse( this.toString() );
         }
 
@@ -487,7 +565,7 @@
      * @example
      * ['A','B'].xEach({
      *   success: function( item, index ) {
-     *     // return; got to the next item 
+     *     // return; go to the next item 
      *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
@@ -508,6 +586,8 @@
      * ['A','B'].xEach({
      *   async: true,
      *   success: function( item, index ) {
+     *     // return; go to the next item 
+     *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
      *   complete: function() {
@@ -574,13 +654,13 @@
      * @example
      * ['a'].xTo(); // '["a"]'
      */
-    Object.defineProperty( Array.prototype, 'xTo', {
-        value: $$.to
-    });
+    // Object.defineProperty( Array.prototype, 'xTo', {
+    //     value: $$.to
+    // });
 
 })(Crisp);
 
-(function($$) {
+// (function($$) {
 
     // var Break = $$.ns('util.control.Break');
     // var End = $$.ns('util.control.End');
@@ -599,13 +679,13 @@
      * (false).xTo(); // 'false'
      * (true).xTo(); // 'true'
      */
-    Object.defineProperty( Boolean.prototype, 'xTo', {
-        value: $$.to
-    });
+    // Object.defineProperty( Boolean.prototype, 'xTo', {
+    //     value: $$.to
+    // });
 
-})(Crisp);
+// })(Crisp);
 
-(function($$) {
+// (function($$) {
 
     // var Break = $$.ns('util.control.Break');
     // var End = $$.ns('util.control.End');
@@ -623,11 +703,11 @@
      * @example
      * new Date('2015-07-13').xTo(); // '"2015-07-13T00:00:00.000Z"'
      */
-    Object.defineProperty( Date.prototype, 'xTo', {
-        value: $$.to
-    });
+    // Object.defineProperty( Date.prototype, 'xTo', {
+    //     value: $$.to
+    // });
 
-})(Crisp);
+// })(Crisp);
 
 (function($$) {
 
@@ -655,6 +735,7 @@
 
 
     /**
+     * @deprecated use .xMath()
      * @function external:Number.prototype.toMath
      * @implements {module:BaseJS.toMath}
      * 
@@ -672,6 +753,24 @@
         value: $$.toMath
     });
 
+    /**
+     * @function external:Number.prototype.xMath
+     * @implements {module:BaseJS.math}
+     * 
+     * @param {external:String} name name of Math Function
+     *
+     * @this external:Number
+     * @return {external:Math} return Math[name].apply(this, thisArg)
+     *
+     * @example
+     * (1).xMath('abs'); // 1
+     * (-1).xMath('abs'); // 1
+     * (-0.1).xMath('abs'); // 0.1
+     */
+    Object.defineProperty( Number.prototype, 'xMath', {
+        value: $$.math
+    });
+
 
     /**
      * @function external:Number.prototype.xTo
@@ -686,9 +785,9 @@
      * (0).xTo(); // '0'
      * (1.5).xTo(); // '1.5'
      */
-    Object.defineProperty( Number.prototype, 'xTo', {
-        value: $$.to
-    });
+    // Object.defineProperty( Number.prototype, 'xTo', {
+    //     value: $$.to
+    // });
 
 })(Crisp);
 
@@ -728,7 +827,7 @@
      * @example
      * {a:'A',b:'B'}.xEach({
      *   success: function( item, index ) {
-     *     // return; got to the next item 
+     *     // return; go to the next item 
      *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
@@ -747,6 +846,8 @@
      * {a:'A',b:'B'}.xEach({
      *   async: true,
      *   success: function( item, index ) {
+     *     // return; go to the next item 
+     *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
      *   complete: function() {
@@ -822,6 +923,24 @@
 
 
     /**
+     * @function external:Object.prototype.xType
+     * @implements {module:BaseJS.type}
+     * 
+     * @param {external:String} [type] JavaScript type
+     *
+     * @this external:Object
+     * @return {external:String|external:Boolean}
+     *
+     * @example
+     * (false).xType();          // 'Object'
+     * (true).xType('Object');  // 'true'
+     */
+    Object.defineProperty( Object.prototype, 'xType', {
+        value: $$.type
+    });
+
+
+    /**
      * Object to HTTP URL Parameter
      * @return {external:String}
      */
@@ -858,7 +977,7 @@
 
 })(Crisp);
 
-(function() {
+(function($$) {
 
     // var Break = $$.ns('util.control.Break');
     // var End = $$.ns('util.control.End');
@@ -893,6 +1012,24 @@
         return str.replace( regExpEscape, "\\$&");
     };
 
+    /**
+     * @function external:Object.prototype.xTo
+     * @implements {module:BaseJS.to}
+     * 
+     * @param {external:String} [type="json"] data format
+     *
+     * @this external:Object
+     * @return {external:String}
+     *
+     * @example
+     * { a: 'A' }.xTo(); // '{"a":"A"}'
+     */
+    Object.defineProperty( RegExp.prototype, 'xTo', {
+        value: function() {
+            return $$.to.call( this.toString() );
+        }
+    });
+
 })(Crisp);
 
 (function($$) {
@@ -902,6 +1039,7 @@
 
 
     /**
+     * @deprecated use .xMath()
      * @function external:String.prototype.toMath
      * @implements {module:BaseJS.toMath}
      * 
@@ -914,6 +1052,21 @@
      */
     Object.defineProperty( String.prototype, 'toMath', {
         value: $$.toMath
+    });
+
+    /**
+     * @function external:String.prototype.xMath
+     * @implements {module:BaseJS.math}
+     * 
+     * @param {external:String} name name of Math Function
+     *
+     * @example
+     * '1'.xMath('abs'); // 1
+     * '-1'.xMath('abs'); // 1
+     * '-0.1'.xMath('abs'); // 0.1
+     */
+    Object.defineProperty( String.prototype, 'xMath', {
+        value: $$.math
     });
 
 
@@ -930,9 +1083,9 @@
      * 'a'.xTo(); // '"a"'
      * 'b"c'.xTo(); // '"b\\"c"'
      */
-    Object.defineProperty( String.prototype, 'xTo', {
-        value: $$.to
-    });
+    // Object.defineProperty( String.prototype, 'xTo', {
+    //     value: $$.to
+    // });
 
 
     /**
@@ -945,8 +1098,12 @@
      * @return {AnyItem}
      *
      * @example
-     * // Array
-     * '["a"]'.xParse(); // ['a']
+     * // String
+     * '"a"'.xParse(); // 'a'
+     * '"b\\"c"'.xParse(); // 'b"c'
+     * 
+     * // Number
+     * '1.5'.xParse(); // 1.5
      * 
      * // Boolean
      * 'true'.xParse(); // true
@@ -954,15 +1111,11 @@
      * // Date
      * '"2015-07-13T00:00:00.000Z"'.xParse(); // Date()
      * 
-     * // Number
-     * '1.5'.xParse(); // 1.5
-     * 
      * // Object
      * '{"a":"A"}'.xParse(); // { a: 'A' }
      * 
-     * // String
-     * '"a"'.xParse(); // 'a'
-     * '"b\\"c"'.xParse(); // 'b"c'
+     * // Array
+     * '["a"]'.xParse(); // ['a']
      */
     Object.defineProperty( String.prototype, 'xParse', {
         value: $$.parse
@@ -970,8 +1123,7 @@
 
 })(Crisp);
 
-/*! OpenCrisp CreateJS - v0.1.0 - 2015-08-03
-* http://opencrisp.wca.at
+/*! OpenCrisp CreateJS - v0.2.3 - 2015-08-21
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
 
@@ -1053,7 +1205,7 @@
     /**
      * defineProperty with Crisp style to called object
      * 
-     * @private
+     * private
      * @memberOf util.create
      * 
      * @param  {external:String}            name
@@ -1206,7 +1358,6 @@
     }
 
 
-
     function objDataEach( item, name ) {
         var data = this.data[name];
 
@@ -1216,20 +1367,15 @@
     }
 
 
-    /**
-     * {@link http://opencrisp.wca.at/tutorials/CreateJS_test.html|use CreateJS}
-     * 
-     * @module CreateJS
-     */
     $$.ns('util.create').prototypes = {
 
         /**
          * initialice newBase
-         * 
+         * @protected
          * @param  {external:Object} option
          * @return {newBase}
          *
-         * @memberOf module:CreateJS.prototype
+         * @memberOf util.create.prototype
          */
         objIni: function( option ) {
             var create = this._('create');
@@ -1253,12 +1399,12 @@
          * @this {newBase}
          * @return {*}
          *
-         * @memberOf module:CreateJS.prototype
+         * @memberOf util.create.prototype
          */
         _: function( option ) {
             var value, name;
 
-            if ( $$.isType( option, 'String' ) ) {
+            if ( $$.type.call( option, 'String' ) ) {
                 return this[ optionName( option ) ];
             }
 
@@ -1287,7 +1433,7 @@
          * @this {newBase}
          * @return {newBase}
          *
-         * @memberOf module:CreateJS.prototype
+         * @memberOf util.create.prototype
          */
         objSet: function( name, value ) {
             return optionValue.call( this, optionName( name ), value );
@@ -1301,16 +1447,18 @@
          * @this {newBase}
          * @return {newBase}
          *
-         * @memberOf module:CreateJS.prototype
+         * @memberOf util.create.prototype
          */
         objData: function( data ) {
-            return this.xEach({
+            ( this.objNs('util.props') ? this : data ).xEach({
                 self: {
                     obj: this,
                     data: data
                 },
                 success: objDataEach
             });
+
+            return this;
         },
 
         /**
@@ -1319,7 +1467,7 @@
          * @this {newBase}
          * @return {newBase} Clone of newBase
          *
-         * @memberOf module:CreateJS.prototype
+         * @memberOf util.create.prototype
          * 
          * @tutorial {@link http://opencrisp.wca.at/tutorials/CreateJS_test.html#objClone}
          * 
@@ -1328,6 +1476,23 @@
             function Clone() {}
             Clone.prototype = this;
             return new Clone();
+        },
+
+        /**
+         * check of ns name is inherit on this object
+         * @param  {external:String} ns name string of namespace
+         * @return {external:Boolean}
+         * 
+         * @memberOf util.create.prototype
+         * 
+         * @tutorial {@link http://opencrisp.wca.at/tutorials/CreateJS_test.html#objNs}
+         *
+         * @example
+         * var myObject = Crisp.utilCreate().objIni();
+         * myObject.objNs('util.create');    // true
+         */
+        objNs: function( ns ) {
+            return this._('create').ns.indexOf( ns ) !== -1;
         }
 
     };
@@ -1359,6 +1524,8 @@
      * @return {object}
      *
      * @tutorial {@link http://opencrisp.wca.at/tutorials/CreateJS_test.html#utilCreate}
+     *
+     * @see  {@link util.event|inherit namespace util.event}
      * 
      * @example
      * var myObject = Crisp.utilCreate().objIni();
@@ -1386,7 +1553,7 @@
      * myObject.xTo();  // '{"b":"B"}'
      */
     $$.utilCreate = function( option ) {
-        var Base, inherit, object;
+        var Base, inherit, ns, object;
 
         option = option || {};
 
@@ -1402,7 +1569,7 @@
             pt: []      // multiple inherit prototypes
         };
 
-        ['util.create'].xAdd( option.ns ).xEach({
+        ns = ['util.create'].xAdd( option.ns ).xEach({
             self: inherit,
             success: createNsEach
         });
@@ -1412,6 +1579,7 @@
         object = new Base();
 
         utilProperty.call( object, optionName('create'), { proVal: {
+            ns:         ns, 
             options:    inherit.op.xAdd( option.options ),
             properties: inherit.pp.xAdd( option.properties )
         }});
@@ -1424,9 +1592,25 @@
         return object;
     };
 
+
+
+    /**
+     * create a new object and inherit options
+     * 
+     * @module CreateJS
+     * 
+     * @tutorial  {@link http://opencrisp.wca.at/tutorials/CreateJS_test.html}
+     * @see {@link util.event|use the namespace of Crisp.EventJS for inherit with Crisp.utilCreate()}
+     * @see {@link util.path|use the namespace of Crisp.PathJS for inherit with Crisp.utilCreate()}
+     *
+     * @example
+     * var myObject = Crisp.utilCreate()
+     */
+
+
 }(Crisp));
-/*! OpenCrisp EventJS - v0.1.7 - 2015-08-04
-* http://opencrisp.wca.at
+/*! OpenCrisp EventJS - v0.1.10 - 2015-08-20
+* https://github.com/OpenCrisp/Crisp.EventJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
 
@@ -1446,7 +1630,7 @@
 
     var utilTick        = $$.utilTick;
     var stringToRegExp    = RegExp.escape;
-    var isType            = $$.isType;
+    var type            = $$.type;
     
 
     /**
@@ -1505,7 +1689,7 @@
             return;
         }
 
-        if ( isType( action, 'RegExp' ) ) {
+        if ( type.call( action, 'RegExp' ) ) {
             return action;
         }
 
@@ -1515,7 +1699,7 @@
             return stringToRegExp( item );
         });
 
-        return new RegExp( '^(' + list.join('|') + ')\\.?' );
+        return new RegExp( '(^|\\s)(' + list.join('|') + ')($|\\s|\\.)' );
     }
 
 
@@ -1546,7 +1730,7 @@
             return;
         }
 
-        if ( isType( path, 'RegExp' ) ) {
+        if ( type.call( path, 'RegExp' ) ) {
             return path;
         }
 
@@ -1647,15 +1831,17 @@
      */
     function EventPicker( self, picker, action, treat, path, empty ) {
         this.self = self;
-        this.picker = picker;
         this.action = action;
-        this.treat = treat;
         this.path = path;
+        this.repeat = true;
+        this.picker = picker;
+
+        this._treat = treat;
         this._empty = empty;
 
-        this.wait = 1;
-        this.repeat = true;
-        this.note = new EventPickerNote();
+        this._wait = 1;
+        this._note = new EventPickerNote();
+        
     }
 
     EventPicker.prototype = {
@@ -1665,7 +1851,7 @@
          * @returns {util.event.EventPicker}
          */
         Wait: function() {
-            this.wait += 1;
+            this._wait += 1;
             return this;
         },
 
@@ -1676,13 +1862,13 @@
          * @returns {util.event.EventPicker}
          */
         Talk: function() {
-            this.wait -= 1;
+            this._wait -= 1;
 
-            if ( this.wait > 0 || ( !this._empty && this.note.Empty() ) ) {
+            if ( this._wait > 0 || ( !this._empty && this._note.Empty() ) ) {
                 return this;
             }
 
-            delete this.picker[ this.treat ];
+            delete this.picker[ this._treat ];
             this.self.eventTrigger( this );
 
             return this;
@@ -1698,14 +1884,22 @@
          * @returns {util.event.EventPicker}
          */
         Note: function( option, type ) {
-            this.note.Add( option, type );
+            this._note.Add( option, type );
             return this;
+        },
+
+        /**
+         * returns the object of note Lists
+         * 
+         */
+        List: function( type ) {
+            return this._note.List( type );
         },
 
         Test: function( event ) {
             var x=0;
 
-            this.note.List( event._noteList ).forEach(function( note ) {
+            this._note.List( event._noteList ).forEach(function( note ) {
                 var testOffList=0;
 
                 if ( event._notePath && !event._notePath.test( note.path ) ) {
@@ -1861,6 +2055,8 @@
      * @class
      * @private
      * @memberOf util.event
+     * 
+     * @requires BaseJS
      */
     function Event() {
         /**
@@ -1927,6 +2123,7 @@
     };
 
 
+
     /**
      * @private
      * 
@@ -1970,7 +2167,7 @@
 
         propertyEvent.trigger( option );
 
-        if ( option.repeat && propertyParent && $$.isType( propertyParent.eventTrigger, 'Function' ) ) {
+        if ( option.repeat && propertyParent && type.call( propertyParent.eventTrigger, 'Function' ) ) {
             propertyParent.eventTrigger( option );
         }
 
@@ -2004,7 +2201,7 @@
         }
 
         // Extension for Crisp.PropsJS
-        if ( !option.path && $$.isType( this.docPath, 'Function' ) ) {
+        if ( !option.path && type.call( this.docPath, 'Function' ) ) {
             option.path = this.docPath();
         }
 
@@ -2129,7 +2326,7 @@
          * myObject.eventListener({
          *     listen: function( e ) {
          *         assert.strictEqual( 'task', e.action );
-         *         assert.strictEqual( '{"_list":{"own":[{"action":"update"}]}}', JSON.stringify( e.note ) );
+         *         assert.strictEqual( '{"_list":{"own":[{"action":"update"}]}}', JSON.stringify( e._note ) );
          *         assert.strictEqual( myObject, this );
          *         assert.strictEqual( myObject, e.self );
          *     }
@@ -2365,7 +2562,7 @@
              * myObject.eventListener({
              *   listen: function( e ) {
              *     console.log('action:', e.action );
-             *     console.log('list:', JSON.stringify( e.note ) );
+             *     console.log('list:', JSON.stringify( e._note ) );
              *   }
              * });
              * 
@@ -2421,8 +2618,8 @@
     };
 
 })(Crisp);
-/*! OpenCrisp PathJS - v0.1.1 - 2015-08-04
-* http://opencrisp.wca.at
+/*! OpenCrisp PathJS - v0.2.2 - 2015-09-11
+* http://opencrisp.wca.at/docs/util.path.html
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
 
@@ -2430,7 +2627,7 @@
     //     // return;
 
     //     var level = 4 * self.level;
-    //     var str = '\x1B[37m' + printFill( self.index, 5 + level ) + '\x1B[39m' + printFill( name, 40 - level );
+    //     var str = '\x1B[37m' + printFill( self._index, 5 + level ) + '\x1B[39m' + printFill( name, 40 - level );
 
     //     if (score) {
     //      score.forEach(function( item, self ) {
@@ -2457,7 +2654,7 @@
 
 
     var utilTick        = $$.utilTick;
-    var isType          = $$.isType;
+    var type          = $$.type;
     
 
     var Break = $$.ns('util.control.Break');
@@ -2616,8 +2813,6 @@
         '#': function( node ) {
             var specific = this.specific();
             var testSpecific = specific ? execValue( specific, node ) : true;
-            // console.log('pathFind.#', testSpecific, $$.toType( node ), node );
-            // console.log('pathFind.#', testSpecific, isType( node.xEach, 'Function' ), node );
 
             if ( !testSpecific ) {
                 // console.log('pathFind.#.isField');
@@ -2627,8 +2822,7 @@
             this.child.exec( node );
 
             // if ( node.isField() ) {
-            // if ( !isType( node.xEach, 'Function' ) ) {
-            if ( !isType( node, 'Array' ) && !isType( node, 'Object' ) ) {
+            if ( !type.call( node, 'Array' ) && !type.call( node, 'Object' ) ) {
                 // console.log('pathFind.#.isField');
                 return;
             }
@@ -2641,7 +2835,7 @@
             node.xEach({
                 self: this,
                 success: function( item ) {
-                    // console.log('\x1B[31mpathFind.#.xEach', item.docPath(), '\x1B[39m' );
+                    // console.log('\x1B[31mpathFind.#.xEach', item.xTo(), '\x1B[39m' );
 
                     pathFind['#'].call( this, item );
                 }
@@ -2661,7 +2855,7 @@
      * @memberOf util.path
      */
     function isFunction( fn ) {
-        return isType( fn, 'Function' );
+        return type.call( fn, 'Function' );
     }
 
 
@@ -2709,7 +2903,6 @@
             limit: 1,
             action: 'success',
             listen: function(e) {
-                console.log('-- execValue: success', e );
                 val = e;
             }
         });
@@ -2733,7 +2926,7 @@
         '|' +   '(\\[|\\()' +                                               // [4] child = findPathCondition
         '|' +   '(\\]|\\))\\.?' +                                           // [5] END of this PathConditionGroup
 
-        '|' +   '([0-9]+(?:\\.[0-9]+)?)(?!\\.|:)' +                                             // [6] Number
+        '|' +   '(\\d+(?:\\.\\d+)?)(?!\\.|:)' +                                             // [6] Number
         '|' +   '(true|false)' +                                            // [7] Boolean String
         '|' +   '"((?:[^"\\\\]*|\\\\"|\\\\)*)"' +                           // [8] DoubleQuotet String
         '|' +   "'((?:[^'\\\\]*|\\\\'|\\\\)*)'" +                           // [9] SingleQuotet String
@@ -2772,12 +2965,12 @@
         condition = prev = conditionGroup.add(1);
 
         // print( this, 'findPathCondition START' );
-        this.level += 1;
+        // this.level += 1;
 
-        regCondition.lastIndex = this.index;
+        regCondition.lastIndex = this._index;
 
-        for (; !stop && ( score = regCondition.exec( this.path ) ); ) {
-            this.index = regCondition.lastIndex;
+        for (; !stop && ( score = regCondition.exec( this._path ) ); ) {
+            this._index = regCondition.lastIndex;
             countContition += 1;
 
             // console.log('');
@@ -2809,7 +3002,7 @@
             else if ( score[5] !== undefined ) {
                 stop = true;
             }
-            // [0-9\\.]+
+            // (\\d+(?:\\.\\d+)?)(?!\\.|:)
             else if ( score[6] !== undefined ) {
                 condition.child = new PathValue( condition, Number(score[6]) );
             }
@@ -2834,18 +3027,18 @@
                 condition.child = new PathValue( condition, this.valueKey(score[12]) );
             }
             else {
-                this.index = score.index;
+                this._index = score.index;
                 condition.parse();
             }
 
-            regCondition.lastIndex = this.index;
+            regCondition.lastIndex = this._index;
 
             // if ( countContition > 20 ) {
             //  throw new Error();
             // }
         }
 
-        this.level -= 1;
+        // this.level -= 1;
         // print( this, 'findPathCondition END' );
 
         return conditionGroup;
@@ -2891,6 +3084,45 @@
         item.exec( this.node );
     }
 
+    /**
+     * @class
+     * @private
+     * @memberOf util.path
+     */
+    function PathBaseProto() {}
+
+    PathBaseProto.prototype = {
+
+        /**
+         * @param  {external:String} name
+         * @return {*}
+         */
+        parent: function( name ) {
+            if ( name ) {
+                return this._parent && isFunction( this._parent[ name ] ) && this._parent[ name ]();
+            }
+            else {
+                return this._parent;
+            }
+        },
+
+        /**
+         * @return {*}
+         */
+        reason: function() {
+            return this._reason || this.parent('reason');
+        },
+
+        /**
+         * @return {*}
+         */
+        specific: function() {
+            return this._specific || this.parent('specific');
+        }
+
+    };
+
+
 
     /**
      * @class
@@ -2905,75 +3137,47 @@
             this._reason = reason;
         }
 
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+        this._parent = parent;
+        // Object.defineProperty( this, '_parent', { value: parent });
         this.condition = [];
     }
 
-    PathConditionGroup.prototype = {
+    var pathConditionGroupProto = PathConditionGroup.prototype = new PathBaseProto();
 
-        /**
-         * @param  {external:String} name
-         * @return {*}
-         */
-        parent: function( name ) {
-            if ( name ) {
-                return this._parent && isFunction( this._parent[ name ] ) && this._parent[ name ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
-
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
-
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
-
-        /**
-         * @param  {external:Boolean} include
-         * @return {util.path.PathCondition}
-         */
-        add: function( include ) {
-            var condition = new PathCondition( this );
-            if ( include ) {
-                this.condition.push( condition );
-            }
-            return condition;
-        },
-
-        /**
-         * @param  {external:String} node
-         * @return {*}
-         */
-        exec: function( node ) {
-            var reason = this.reason();
-
-            var picker = reason.eventPicker({
-                cache: reason,
-                action: 'complete',
-                empty: true
-            });
-
-            this.condition.xEach({
-                self: {
-                    node: node,
-                    reason: reason
-                },
-                success: conditionGroupExecSuccess
-            });
-
-            picker.Talk();
+    /**
+     * @param  {external:Boolean} include
+     * @return {util.path.PathCondition}
+     */
+    pathConditionGroupProto.add = function( include ) {
+        var condition = new PathCondition( this );
+        if ( include ) {
+            this.condition.push( condition );
         }
+        return condition;
+    };
+
+    /**
+     * @param  {external:String} node
+     * @return {*}
+     */
+    pathConditionGroupProto.exec = function( node ) {
+        var reason = this.reason();
+
+        var picker = reason.eventPicker({
+            cache: reason,
+            action: 'complete',
+            empty: true
+        });
+
+        this.condition.xEach({
+            self: {
+                node: node,
+                reason: reason
+            },
+            success: conditionGroupExecSuccess
+        });
+
+        picker.Talk();
     };
 
 
@@ -2985,103 +3189,75 @@
      * @memberOf util.path
      */
     function PathCondition( parent ) {
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+        this._parent = parent;
+        // Object.defineProperty( this, '_parent', { value: parent });
     }
 
-    PathCondition.prototype = {
+    var pathConditionProto = PathCondition.prototype = new PathBaseProto();
 
-        /**
-         * @param  {external:String} name
-         * @return {*}
-         */
-        parent: function( name ) {
-            if ( name ) {
-                return this._parent && isFunction( this._parent[ name ] ) && this._parent[ name ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
+    /**
+     * @return {util.path.PathCondition}
+     */
+    pathConditionProto.parse = function() {
+        this.child = findPathDoc.call( this.reason(), this );
+        return this;
+    };
 
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
+    /**
+     * @param  {*} node
+     * @return {*}
+     */
+    pathConditionProto.exec = function( node ) {
+        var child, value;
 
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
+        // console.log('exec PathCondition', node );
 
-        /**
-         * @return {util.path.PathCondition}
-         */
-        parse: function() {
-            this.child = findPathDoc.call( this.reason(), this );
-            return this;
-        },
-
-        /**
-         * @param  {*} node
-         * @return {*}
-         */
-        exec: function( node ) {
-            var child, value;
-
-            // console.log('exec PathCondition', node );
-
-            if ( !this.reverse() && !this.operator() ) {
-                return nextTick.call( this, node );
-            }
-
-            child = execValue( this.child, node );
-            child = execReverse( this.reverse(), child );
-            
-            if ( this.operator() ) {
-
-                value = execValue( this.value, node );
-
-                if ( value instanceof RegExp ) {
-                    child = value.test( child );
-                    value = true;
-                }
-
-                child = pathOperator[ this.operator() ]( child, value );
-                // console.log('-- operator:', this.operator(), child, value );
-            }
-            
-            this.reason().eventTrigger({
-                action: 'success',
-                args: child
-            });
-        },
-
-        /**
-         * @return {*}
-         */
-        reverse: function() {
-            return this._reverse || 0;
-        },
-
-        /**
-         * @return {*}
-         */
-        operator: function() {
-            return this._operator || 0;
-        },
-
-        /**
-         * @param {*} next
-         * @return {*}
-         */
-        next: function( next ) {
-            return next ? this._next === next : this._next;
+        if ( !this.reverse() && !this.operator() ) {
+            return nextTick.call( this, node );
         }
+
+        child = execValue( this.child, node );
+        child = execReverse( this.reverse(), child );
+        
+        if ( this.operator() ) {
+
+            value = execValue( this.value, node );
+
+            if ( value instanceof RegExp ) {
+                child = value.test( child );
+                value = true;
+            }
+
+            child = pathOperator[ this.operator() ]( child, value );
+            // console.log('-- operator:', this.operator(), child, value );
+        }
+
+        this.reason().eventTrigger({
+            action: 'success',
+            args: child
+        });
+    };
+
+    /**
+     * @return {*}
+     */
+    pathConditionProto.reverse = function() {
+        return this._reverse || 0;
+    };
+
+    /**
+     * @return {*}
+     */
+    pathConditionProto.operator = function() {
+        return this._operator || 0;
+    };
+
+    /**
+     * @param {*} next
+     * @return {*}
+     */
+    pathConditionProto.next = function( next ) {
+        return next ? this._next === next : this._next;
     };
 
 
@@ -3090,14 +3266,14 @@
      * @type {external:String}
      */
     var strPathDoc = '\\s*(?:' +
-                '(\\.)' +                                   // [1] Parent Doc
-        '|' +   '(?:(-?[0-9]+)~([0-9]+)|(-[0-9]+))\\.?' +   // [2] Limit items
-        '|' +    '([0-9]+|[a-z][a-z0-9\\-]*)\\.?' +         // [5] Doc Attribute-Name
-        '|' +    '([*#+])\\.?' +                            // [6] Value Node
-        '|' +    '\\$([a-z0-9_]+)\\.?' +                    // [7] Repeat
-        '|' +    '(:)' +                                    // [8] findFunction
-        '|' +    '(\\[|\\()' +                              // [9] findCondition
-        '|' +    '.+' +                                     //     END of findDoc
+                '(\\.)' +                                  // [1] Parent Doc
+        '|' +   '(-?\\d*~\\d*|-\\d+)\\.?' +                // [2] Limit items
+        '|' +   '(\\d+|[a-z][a-z\\d\\-]*)\\.?' +           // [3] Doc Attribute-Name
+        '|' +   '([*#+])\\.?' +                            // [4] Value Node
+        '|' +   '\\$([a-z\\d_]+)\\.?' +                    // [5] Repeat
+        '|' +   '(:)' +                                    // [6] findFunction
+        '|' +   '(\\[|\\()' +                              // [7] findCondition
+        '|' +   '.+' +                                     //     END of findDoc
     ')\\s*';
     
     /**
@@ -3117,14 +3293,14 @@
         var obj;
         // print( this, 'findPathDoc' );
 
-        regPathDoc.lastIndex = this.index;
-        var score = regPathDoc.exec( this.path );
+        regPathDoc.lastIndex = this._index;
+        var score = regPathDoc.exec( this._path );
 
         if ( !score ) {
             return;
         }
 
-        this.index = regPathDoc.lastIndex;
+        this._index = regPathDoc.lastIndex;
 
         // print( this, 'findPathDoc', score );
 
@@ -3132,32 +3308,32 @@
         if ( score[1] !== undefined ) {
             obj = new PathParent( parent ).parse();
         }
-        // (?:(-[0-9]+)|(-?[0-9]+)~([0-9]+))\\.?
-        else if ( score[2] !== undefined || score[4] !== undefined ) {
-            obj = new PathLimit( parent, ( score[2] || score[4] ), score[3] ).parse();
+        // (-?\\d*~\\d*|-\\d+)\\.?
+        else if ( score[2] !== undefined ) {
+            obj = new PathLimit( parent, score[2] ).parse();
         }
-        // [0-9]+|[a-z][a-z0-9\\-]*
-        else if ( score[5] !== undefined ) {
-            obj = new PathDoc( parent, score[5] ).parse();
+        // (\\d+|[a-z][a-z\\d\\-]*)\\.?
+        else if ( score[3] !== undefined ) {
+            obj = new PathDoc( parent, score[3] ).parse();
         }
         // [*#+]
-        else if ( score[6] !== undefined ) {
-            obj = new PathRepeat( parent, score[6] ).parse();
+        else if ( score[4] !== undefined ) {
+            obj = new PathRepeat( parent, score[4] ).parse();
         }
-        // \\$([a-z0-9_]+)\\.?
-        else if ( score[7] !== undefined ) {
-            obj = new PathDoc( parent, this.valueKey( score[7] ) ).parse();
+        // \\$([a-z\\d_]+)\\.?
+        else if ( score[5] !== undefined ) {
+            obj = new PathDoc( parent, this.valueKey( score[5] ) ).parse();
         }
         // :
-        else if ( score[8] !== undefined ) {
+        else if ( score[6] !== undefined ) {
             obj = findPathFunction.call( this, parent );
         }
         // \\[|\\(
-        else if ( score[9] !== undefined ) {
+        else if ( score[7] !== undefined ) {
             obj = new PathFilter( parent ).parse();
         }
         else {
-            this.index = score.index;
+            this._index = score.index;
             return;
         }
 
@@ -3173,61 +3349,54 @@
      * @memberOf util.path
      */
     function PathFilter( parent ) {
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+        this._parent = parent;
+        // Object.defineProperty( this, '_parent', { value: parent });
     }
 
-    PathFilter.prototype = {
-        /**
-         * @return {*}
-         */
-        parent: function( fn ) {
-            if ( fn ) {
-                return this._parent && isFunction( this._parent[ fn ] ) && this._parent[ fn ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
+    var pathFilterProto = PathFilter.prototype = new PathBaseProto();
 
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
-
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
-
-        /**
-         * @return {*}
-         */
-        parse: function() {
-            this.filter = findPathCondition.call( this.reason(), this );
-            this.child = findPathDoc.call( this.reason(), this );
-            return this;
-        },
-
-        /**
-         * @return {*}
-         */
-        exec: function( node ) {
-            // console.log('PathFilter.exec', !execValue( this.filter, node ) );
-            // console.log('============== PathFilter.exec ============' );
-
-            if ( !execValue( this.filter, node ) ) {
-                return;
-            }
-
-            nextTick.call( this, node );
-            return true;
-        }
+    /**
+     * @return {*}
+     */
+    pathFilterProto.parse = function() {
+        this.filter = findPathCondition.call( this.reason(), this );
+        this.child = findPathDoc.call( this.reason(), this );
+        return this;
     };
+
+    /**
+     * @return {*}
+     */
+    pathFilterProto.exec = function( node ) {
+        // console.log('PathFilter.exec', !execValue( this.filter, node ) );
+        // console.log('============== PathFilter.exec ============' );
+
+        if ( !execValue( this.filter, node ) ) {
+            return;
+        }
+
+        nextTick.call( this, node );
+        return true;
+    };
+
+
+    var regPathLimit = /^(-?\d+)?~(\d+)?$/;
+
+    /**
+     * interface fore util.props
+     * @param  {external:String} fn   uitl.props config function
+     * @param  {external:Number}   conf [description]
+     * @param  {external:Number}   alt  [description]
+     * @return {external:Number}        [description]
+     */
+    function configPropsTop( fn, conf, alt ) {
+        try {
+            return this._('config')[ fn ]( conf );
+        }
+        catch (e) {
+            return conf || alt;
+        }
+    }
 
 
     /**
@@ -3237,67 +3406,47 @@
      *
      * @memberOf util.path
      */
-    function PathLimit( parent, start, limit ) {
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+    // function PathLimit( parent, start, limit ) {
+    function PathLimit( parent, conf ) {
+        this._parent = parent;
+        
+        // console.log('PathLimit', conf );
 
-        // this._start = 0;
-        // this._limit = 2;
+        if ( regPathLimit.test( conf ) ) {
+            conf = regPathLimit.exec( conf );
 
-        this._start = Number(start);
-        this._limit = limit && Math.abs(limit);
+            this._start = conf[1];
+            this._limit = conf[2];
+        }
+        else {
+            this._start = conf;
+        }
     }
 
-    PathLimit.prototype = {
-        /**
-         * @return {*}
-         */
-        parent: function( fn ) {
-            if ( fn ) {
-                return this._parent && isFunction( this._parent[ fn ] ) && this._parent[ fn ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
+    var pathLimitProto = PathLimit.prototype = new PathBaseProto();
 
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
-
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
-
-        /**
-         * @return {*}
-         */
-        parse: function() {
-            this.child = findPathDoc.call( this.reason(), this );
-            return this;
-        },
-
-        /**
-         * @return {*}
-         */
-        exec: function( node ) {
-            node.xEach({
-                self: this,
-                start: this._start,
-                limit: this._limit,
-                success: function( item ) {
-                    nextTick.call( this, item );
-                }
-            });
-        }
+    /**
+     * @return {*}
+     */
+    pathLimitProto.parse = function() {
+        this.child = findPathDoc.call( this.reason(), this );
+        return this;
     };
 
+    /**
+     * @return {*}
+     */
+    pathLimitProto.exec = function( node ) {
+        node.xEach({
+            self: this,
+            start: configPropsTop.call( node, 'optStart', this._start, 0 ),
+            limit: configPropsTop.call( node, 'optLimit', this._limit, 10 ),
+            success: function( item ) {
+                nextTick.call( this, item );
+            }
+        });
+    };
+    
 
     /**
      * @class
@@ -3307,58 +3456,28 @@
      * @memberOf util.path
      */
     function PathParent( parent ) {
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+        this._parent = parent;
+        // Object.defineProperty( this, '_parent', { value: parent });
     }
 
-    PathParent.prototype = {
-        /**
-         * @return {*}
-         */
-        parent: function( fn ) {
-            if ( fn ) {
-                return this._parent && isFunction( this._parent[ fn ] ) && this._parent[ fn ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
-
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
-
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
-
-        /**
-         * @return {*}
-         */
-        parse: function() {
-            this.child = findPathDoc.call( this.reason(), this );
-            return this;
-        },
-
-        /**
-         * @return {*}
-         */
-        exec: function( node ) {
-            // console.log('PathParent.exec' );
-            nextTick.call( this, node.__parent__ );
-        }
-    };
-
+    var pathParentProto = PathParent.prototype = new PathBaseProto();
 
     /**
-     * @todo  expand with eachLimit
+     * @return {*}
      */
+    pathParentProto.parse = function() {
+        this.child = findPathDoc.call( this.reason(), this );
+        return this;
+    };
+
+    /**
+     * @return {*}
+     */
+    pathParentProto.exec = function( node ) {
+        // console.log('PathParent.exec' );
+        nextTick.call( this, node.__parent__ );
+    };
+
 
     /**
      * @class
@@ -3374,63 +3493,37 @@
         this._attr = attr;
     }
 
-    PathDoc.prototype = {
-        /**
-         * @return {*}
-         */
-        parent: function( fn ) {
-            if ( fn ) {
-                return this._parent && isFunction( this._parent[ fn ] ) && this._parent[ fn ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
+    var pathDocProto = PathDoc.prototype = new PathBaseProto();
 
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
+    /**
+     * @return {*}
+     */
+    pathDocProto.parse = function() {
+        // console.log('PathDoc.parse child:', this.child );
+        this.child = findPathDoc.call( this.reason(), this );
+        return this;
+    };
 
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
+    /**
+     * @return {*}
+     */
+    pathDocProto.exec = function( node ) {
+        // console.log('PathDoc.exec', this.attr() );
 
-        /**
-         * @return {*}
-         */
-        parse: function() {
-            // console.log('PathDoc.parse child:', this.child );
-            this.child = findPathDoc.call( this.reason(), this );
-            return this;
-        },
-
-        /**
-         * @return {*}
-         */
-        exec: function( node ) {
-            // console.log('PathDoc.exec', this.attr() );
-
-            if ( !node[ this.attr() ] ) {
-                return;
-            }
-
-            node = node[ this.attr() ];
-
-            nextTick.call( this, node );
-        },
-
-        /**
-         * @return {*}
-         */
-        attr: function() {
-            return this._attr;
+        if ( !node[ this.attr() ] ) {
+            return;
         }
+
+        node = node[ this.attr() ];
+
+        nextTick.call( this, node );
+    };
+
+    /**
+     * @return {*}
+     */
+    pathDocProto.attr = function() {
+        return this._attr;
     };
 
 
@@ -3444,61 +3537,34 @@
      * @memberOf util.path
      */
     function PathRepeat( parent, type ) {
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+        this._parent = parent;
+        // Object.defineProperty( this, '_parent', { value: parent });
         this._type = type;
     }
 
-    PathRepeat.prototype = {
-        /**
-         * @return {*}
-         */
-        parent: function( fn ) {
-            if ( fn ) {
-                return this._parent && isFunction( this._parent[ fn ] ) && this._parent[ fn ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
+    var pathRepeatProto = PathRepeat.prototype = new PathBaseProto();
 
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
+    /**
+     * @return {*}
+     */
+    pathRepeatProto.parse = function() {
+        this.child = findPathDoc.call( this.reason(), this );
+        return this;
+    };
 
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
+    /**
+     * @return {*}
+     */
+    pathRepeatProto.exec = function( node ) {
+        // console.log('PathRepeat.exec', this.type(), node );
+        pathFind[ this.type() ].call( this, node );
+    };
 
-        /**
-         * @return {*}
-         */
-        parse: function() {
-            this.child = findPathDoc.call( this.reason(), this );
-            return this;
-        },
-
-        /**
-         * @return {*}
-         */
-        exec: function( node ) {
-            // console.log('PathRepeat.exec', this.type(), node );
-            pathFind[ this.type() ].call( this, node );
-        },
-
-        /**
-         * @return {*}
-         */
-        type: function() {
-            return this._type;
-        }
-
+    /**
+     * @return {*}
+     */
+    pathRepeatProto.type = function() {
+        return this._type;
     };
 
 
@@ -3518,14 +3584,14 @@
 
         // print( this, 'findPathFunction' );
 
-        regFunction.lastIndex = this.index;
-        score = regFunction.exec( this.path ); 
+        regFunction.lastIndex = this._index;
+        score = regFunction.exec( this._path ); 
         
         if ( !score ) {
             return obj;
         }
 
-        this.index = regFunction.lastIndex;
+        this._index = regFunction.lastIndex;
         // print( this, 'findPathFunction', score );
 
         if ( score[1] !== undefined ) {
@@ -3539,7 +3605,7 @@
             }
         }
         else {
-            this.index = score.index;
+            this._index = score.index;
             return obj;
         }
 
@@ -3556,75 +3622,49 @@
      * @memberOf util.path
      */
     function PathFunction( parent, name ) {
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+        this._parent = parent;
+        // Object.defineProperty( this, '_parent', { value: parent });
         this._name = name;
         // this._name = name || 'toString';
     }
 
-    PathFunction.prototype = {
-        /**
-         * @return {*}
-         */
-        parent: function( fn ) {
-            if ( fn ) {
-                return this._parent && isFunction( this._parent[ fn ] ) && this._parent[ fn ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
+    var pathFunctionProto = PathFunction.prototype = new PathBaseProto();
 
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
+    /**
+     * @return {*}
+     */
+    pathFunctionProto.parse = function() {
+        this.child = findPathFunction.call( this.reason(), this );
+        return this;
+    };
 
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
+    /**
+     * @return {*}
+     */
+    pathFunctionProto.exec = function( node ) {
+        // console.log('PathFunction.exec', this.name() );
 
-        /**
-         * @return {*}
-         */
-        parse: function() {
-            this.child = findPathFunction.call( this.reason(), this );
-            return this;
-        },
-
-        /**
-         * @return {*}
-         */
-        exec: function( node ) {
-            // console.log('PathFunction.exec', this.name() );
-
-            if ( !isFunction( node[ this.name() ] ) ) {
-                throw new Error('PathFunction ' + this.name() + ' is not defined!');
-            }
-
-            node = node[ this.name() ].apply( node, this.args() );
-
-            nextTick.call( this, node );
-        },
-
-        /**
-         * @return {*}
-         */
-        name: function() {
-            return this._name || 'toString';
-        },
-
-        /**
-         * @return {*}
-         */
-        args: function() {
-            return this._args;
+        if ( !isFunction( node[ this.name() ] ) ) {
+            throw new Error('PathFunction ' + this.name() + ' is not defined!');
         }
+
+        node = node[ this.name() ].apply( node, this.args() );
+
+        nextTick.call( this, node );
+    };
+
+    /**
+     * @return {*}
+     */
+    pathFunctionProto.name = function() {
+        return this._name || 'toString';
+    };
+
+    /**
+     * @return {*}
+     */
+    pathFunctionProto.args = function() {
+        return this._args;
     };
 
 
@@ -3638,47 +3678,20 @@
      * @memberOf util.path
      */
     function PathValue( parent, value ) {
-        // this._parent = parent;
-        Object.defineProperty( this, '_parent', { value: parent });
+        this._parent = parent;
+        // Object.defineProperty( this, '_parent', { value: parent });
         this._value = value;
     }
 
-    PathValue.prototype = {
-        /**
-         * @return {*}
-         */
-        parent: function( fn ) {
-            if ( fn ) {
-                return this._parent && isFunction( this._parent[ fn ] ) && this._parent[ fn ]();
-            }
-            else {
-                return this._parent;
-            }
-        },
+    var pathValueProto = PathValue.prototype = new PathBaseProto();
 
-        /**
-         * @return {*}
-         */
-        reason: function() {
-            return this._reason || this.parent('reason');
-        },
-
-        /**
-         * @return {*}
-         */
-        specific: function() {
-            return this._specific || this.parent('specific');
-        },
-
-        /**
-         * @return {*}
-         */
-        exec: function() {
-            // console.log('PathValue.exec', this.name() );
-            nextTick.call( this, this._value );
-        }
+    /**
+     * @return {*}
+     */
+    pathValueProto.exec = function() {
+        // console.log('PathValue.exec', this.name() );
+        nextTick.call( this, this._value );
     };
-
 
 
 
@@ -3691,10 +3704,13 @@
             return this.child.exec( node );
         }
 
-
         var reason = this.reason();
-        // console.log('nextTick2:', reason );
         
+        // stop callback of success if ._start > 0
+        if ( ( reason._count += 1 ) <= reason._start ) {
+            return;
+        }
+
         var picker = reason.eventPicker({
             cache: reason,
             action: 'complete',
@@ -3713,8 +3729,8 @@
 
         picker.Talk();
         
-        if ( reason.limit !== -1 && picker.note.Length() >= reason.limit ) {
-            // console.log('nextTick.limit', reason.limit, picker.note.list.own );
+        if ( reason._limit !== -1 && picker._note.Length() >= reason._limit ) {
+            // console.log('nextTick.limit', reason._limit, picker.note.list.own );
             picker.Talk();
             throw new End();
         }
@@ -3725,7 +3741,7 @@
 
 
 
-    function parsePath( reason ) {
+    function _parsePath( reason ) {
         // console.log('path:', reason.path );
 
         var condition = findPathCondition.call( reason );
@@ -3743,11 +3759,11 @@
             if ( err instanceof End ) {
                 return;
             }
-            else if ( reason.preset !== undefined ) {
+            else if ( reason._preset !== undefined ) {
                 
                 reason.eventTrigger({
                     action: 'success',
-                    args: reason.preset
+                    args: reason._preset
                 });
 
                 return;
@@ -3762,7 +3778,6 @@
     }
 
 
-
     /**
      * @class
      * @private
@@ -3771,14 +3786,17 @@
      * @memberOf util.path
      */
     function Path( option ) {
-        this.index = option.index;        // Zeichenposition für regexp
-        this.path = option.path;
-        this.values = option.values;
-        this.preset = option.preset;
-        this.limit = option.limit;
-        this.async = option.async;
-        this.level = option.level;        // console log
-        this.filter = option.filter;       // delete
+        this._path = option.path;
+        this._values = option.values;
+        this._preset = option.preset;
+        this._limit = option.limit;
+        this._start = option.start;
+        this._async = option.async;
+        
+        this._count = 0;        // count of finde node for ._start
+        this._index = 0;        // Zeichenposition für regexp
+        // this.level = option.level;        // console log
+        // this.filter = option.filter;       // delete
 
         // this._success = option.success;
         // this._complete = option.complete;
@@ -3789,10 +3807,168 @@
          * @return {*}
          */
         valueKey: function( key ) {
-            return this.values[ key ];
+            return this._values[ key ];
         }
     };
 
+
+    /**
+     * _pathNode
+     * 
+     * @private
+     * 
+     * @param  {external:Object} option
+     *
+     * @this {this}
+     * @return {*}
+     *
+     * @memberOf util.path
+     *
+     * @see  util.path#pathNode
+     * @see  module:PathJS.pathNode
+     *
+     * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS_test.html#pathNode|use pathNode}
+     * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS-path_test.html|more Examples}
+     *
+     * @example
+     * myObject.pathNode('a:'); // 'A'
+     */
+    function _pathNode( option ) {
+        var node;
+
+        option = option || "";
+
+        if ( option.xType('String') ) {
+            option = { path: option };
+        }
+
+        option.limit = 1;
+        option.async = false;
+        option.success = function(e) {
+            node = e;
+        };
+
+        this.pathFind( option );
+
+        if ( type.call( node, 'Undefined' ) ) {
+            if ( type.call( option.preset, 'Function' ) ) {
+                node = option.preset.call( this );
+            }
+            else {
+                node = option.preset;
+            }
+        }
+
+        return node;
+    }
+
+
+    /**
+     * _pathFind
+     * @private
+     * 
+     * @param  {external:Object} option
+     * @param {AnyItem} option.self alternate thisArg of callback
+     *
+     * @this {this}
+     * @return {*}
+     *
+     * @memberOf util.path
+     * 
+     * @see  util.path#pathFind
+     * @see  module:PathJS.pathFind
+     *
+     * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS_test.html#pathFind|use pathFind}
+     * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS-path_test.html|more Examples}
+     *
+     */
+    function _pathFind( option ) {
+        // console.log('_pathFind');
+        var self;
+
+        option = option || {};
+
+        self = option.self || this;
+        option.limit = option.limit || -1;
+        option.start = option.start || 0;
+        // option.level = 0;
+
+        var object = new Path( option );
+
+        $$.defineEvent( object );
+
+        if ( isFunction( option.success ) ) {
+            object.eventListener({
+                action: 'success',
+                self: self,
+                listen: option.success
+            });
+        }
+
+        if ( isFunction( option.complete ) ) {
+            object.eventListener({
+                action: 'complete',
+                self: self,
+                listen: option.complete
+            });
+        }
+
+        utilTick( this, _parsePath, object, option.async );
+
+        return this;
+    }
+
+    /**
+     * _pathExists
+     * @private
+     * 
+     * @param  {external:String} path
+     *
+     * @this {this}
+     * @return {external:Boolean}
+     *
+     * @memberOf util.path
+     * 
+     * @see  util.path#pathExists
+     * @see  module:PathJS.pathExists
+     *
+     * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS_test.html#pathExists|use pathExists}
+     * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS-path_test.html|more Examples}
+     *
+     */
+    function _pathExists( path ) {
+        return this.pathNode({ path: path }) !== undefined;
+    }
+
+    $$.ns('util.path').prototypes = {
+
+        /**
+         * @function
+         * @implements {util.path._pathNode}
+         * @memberOf   util.path.prototype
+         *
+         * @example
+         * var myObject = Crisp.utilCreate({ ns: 'util.path' });
+         */
+        pathNode: _pathNode,
+
+        /**
+         * @function
+         * @implements {util.path._pathFind}
+         * @memberOf   util.path.prototype
+         *
+         */
+        pathFind: _pathFind,
+
+        /**
+         * @function
+         * @implements {util.path._pathExists}
+         * @memberOf   util.path.prototype
+         *
+         */
+        pathExists: _pathExists
+
+    };
 
     /**
      * Create mothods from PathJS on any Object
@@ -3820,85 +3996,29 @@
 
             /**
              * @function
+             * @implements {util.path._pathNode}
              * @memberOf module:PathJS
              */
             pathNode: {
-                value: function( opt ) {
-                    var self = this,
-                        node;
-
-                    opt = opt || "";
-
-                    if ( {}.toString.call( opt ) === "[object String]" ) {
-                        opt = { path: opt };
-                    }
-
-                    opt.limit = 1;
-                    opt.async = false;
-                    opt.success = function(e) {
-                        node = e;
-                    };
-
-                    self.pathFind( opt );
-
-                    if ( node === undefined ) {
-                        node = opt.preset;
-                    }
-
-                    return node;
-                }
+                value: _pathNode
             },
 
             /**
              * @function
+             * @implements {util.path._pathFind}
              * @memberOf module:PathJS
              */
             pathFind: {
-                value: function( opt ) {
-                    // console.log('pathFind');
-
-                    var self = this;
-
-                    opt = opt || {};
-
-                    opt.limit = opt.limit || -1;
-                    opt.index = opt.index || 0;
-                    opt.level = 0;
-
-                    var obj = new Path( opt );
-
-                    $$.defineEvent( obj );
-
-                    if ( isFunction( opt.success ) ) {
-                        obj.eventListener({
-                            action: 'success',
-                            self: self,
-                            listen: opt.success
-                        });
-                    }
-
-                    if ( isFunction( opt.complete ) ) {
-                        obj.eventListener({
-                            action: 'complete',
-                            self: self,
-                            listen: opt.complete
-                        });
-                    }
-
-                    utilTick( self, parsePath, obj, opt.async );
-
-                    return self;
-                }
+                value: _pathFind
             },
 
             /**
              * @function
+             * @implements {util.path._pathExists}
              * @memberOf module:PathJS
              */
             pathExists: {
-                value: function( path ) {
-                    return this.pathNode({ path: path }) !== undefined;
-                }
+                value: _pathExists
             }
         });
 
