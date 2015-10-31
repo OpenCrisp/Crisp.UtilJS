@@ -1,7 +1,7 @@
 {
     "name": "crisp-util",
     "main": "dist/crisp-util.js",
-    "version": "0.1.3",
+    "version": "0.1.5",
     "homepage": "https://github.com/OpenCrisp/Crisp.UtilJS",
     "repository": {
         "type": "git",

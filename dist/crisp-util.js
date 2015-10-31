@@ -1,8 +1,8 @@
-/*! OpenCrisp UtilJS - v0.1.3 - 2015-09-11
+/*! OpenCrisp UtilJS - v0.1.5 - 2015-10-31
 * https://github.com/OpenCrisp/Crisp.UtilJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
-/*! OpenCrisp BaseJS - v0.2.9 - 2015-08-18
-* http://opencrisp.wca.at
+/*! OpenCrisp BaseJS - v0.3.0 - 2015-10-31
+* https://github.com/OpenCrisp/Crisp.BaseJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 /**
  * Basic Crisp functions
@@ -485,7 +485,7 @@
 (function($$) {
 
     var Break = $$.ns('util.control.Break');
-    // var End = $$.ns('util.control.End');
+    var End = $$.ns('util.control.End');
 
     
     /**
@@ -602,10 +602,14 @@
      * // complete
      */
     function xEachArray( option ) {
-        var i = 0,
+        var index,
+        
+            i = 0,
+            reverse = 1,
             length = this.length,
             start = option.start ? Number( option.start ) : 0,
             limit = option.limit === undefined ? length : Number( option.limit );
+
         
         if ( limit <= 0 ) {
             limit = length;
@@ -624,13 +628,30 @@
             limit = length;
         }
 
-        try {
-            
-            for (; i<limit; i+=1 ) {
-                option.success.call( option.self, this[ i + start ], i + start );
-            }
+        if ( option.reverse ) {
+            reverse = -1;
+            start -= length + reverse;
+        }
 
-        } catch (e) { if ( e instanceof Break ) {} else { throw e; } }
+        for (; i<limit; i+=1 ) {
+            try {
+                index = ( i + start ) * reverse;
+
+                option.success.call( option.self, this[ index ], index );
+            } catch (e) {
+                if ( e instanceof Break ) {
+                    if ( option.reverse && option.limit ) {
+                        limit += 1;
+                    }
+                }
+                else if ( e instanceof End || index < 0 ) {
+                    return this;
+                }
+                else {
+                    throw e;
+                }
+            }
+        }
         
         return this;
     }
@@ -794,7 +815,7 @@
 (function($$) {
 
     var Break = $$.ns('util.control.Break');
-    // var End = $$.ns('util.control.End');
+    var End = $$.ns('util.control.End');
 
 
     /**
@@ -862,8 +883,10 @@
      * // complete
      */
     function xEachObject( option ) {
-        var keys = Object.keys( this ),
+        var index,
+            keys = Object.keys( this ),
             i = 0,
+            reverse = 1,
             length = keys.length,
             start = option.start ? Number( option.start ) : 0,
             limit = option.limit === undefined ? length : Number( option.limit ),
@@ -886,14 +909,30 @@
             limit = length;
         }
 
-        try {
+        if ( option.reverse ) {
+            reverse = -1;
+            start -= length + reverse;
+        }
 
-            for (; i<limit; i+=1 ) {
-                name = keys[ i + start ];
+        for (; i<limit; i+=1 ) {
+            try {
+                index = ( i + start ) * reverse;
+                name = keys[ index ];
                 option.success.call( option.self, this[ name ], name );
+            } catch (e) {
+                if ( e instanceof Break ) {
+                    if ( option.reverse && option.limit ) {
+                        limit += 1;
+                    }
+                }
+                else if ( e instanceof End || index < 0 ) {
+                    return this;
+                }
+                else {
+                    throw e;
+                }
             }
-
-        } catch (e) { if ( e instanceof Break ) {} else { throw e; } }
+        }
         
         return this;
     }
@@ -1123,7 +1162,7 @@
 
 })(Crisp);
 
-/*! OpenCrisp CreateJS - v0.2.3 - 2015-08-21
+/*! OpenCrisp CreateJS - v0.2.6 - 2015-10-31
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
 
@@ -1143,6 +1182,18 @@
      * defaultSeperator; // '__'
      */
     var defaultSeperator = "__";
+
+    /**
+     * allow redefine prototype functions
+     *
+     * @privale
+     * @memberOf util.create
+     * @type {external:Array}
+     * 
+     * @example
+     * prototypeRedefine; // ['toString','valueOf']
+     */
+    var prototypeRedefine = ['toString','valueOf'];
 
     /**
      * global cache for utilCreate(once)
@@ -1166,7 +1217,7 @@
      * @throws {Error} If [this.hasOwnProperty( name )]
      */
     function inheritTest( name ) {
-        if ( this.prototype[ name ] && name !== "toString" ) {
+        if ( this.prototype[ name ] && prototypeRedefine.indexOf( name ) === -1 ) {
             // console.crisp("error", "Redefined prototype " + name );
             throw new Error("Redefined prototype " + name );
         }
@@ -1609,7 +1660,7 @@
 
 
 }(Crisp));
-/*! OpenCrisp EventJS - v0.1.10 - 2015-08-20
+/*! OpenCrisp EventJS - v0.2.2 - 2015-10-31
 * https://github.com/OpenCrisp/Crisp.EventJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
@@ -2618,7 +2669,7 @@
     };
 
 })(Crisp);
-/*! OpenCrisp PathJS - v0.2.2 - 2015-09-11
+/*! OpenCrisp PathJS - v0.5.1 - 2015-10-31
 * http://opencrisp.wca.at/docs/util.path.html
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
@@ -2657,8 +2708,9 @@
     var type          = $$.type;
     
 
-    var Break = $$.ns('util.control.Break');
+    // var Break = $$.ns('util.control.Break');
     var End = $$.ns('util.control.End');
+    var EndPath = function() {};
 
 
     /**
@@ -2778,6 +2830,7 @@
         '*': function( node ) {
             node.xEach({
                 self: this,
+                reverse: this._revlist,
                 success: function( item ) {
                     nextTick.call( this, item );
                 }
@@ -2834,6 +2887,7 @@
 
             node.xEach({
                 self: this,
+                reverse: this._revlist,
                 success: function( item ) {
                     // console.log('\x1B[31mpathFind.#.xEach', item.xTo(), '\x1B[39m' );
 
@@ -2873,8 +2927,22 @@
         var i=0;
 
         for (; i<reverse; i+=1 ) {
-            // console.log('execReverse:', typeof node, node );
-            node = (node==='false' || node===false) ? true : !node;
+            // console.log('execReverse:', type.call( node ), Boolean(node), node.valueOf() );
+            
+            node = (
+                type.call( node, 'Undefined' ) ||
+                node==='false' ||
+                node===false ||
+                (
+                    type.call( node, 'Boolean' ) && 
+                    !node.valueOf()
+                ) || 
+                (
+                    type.call( node.isBoolean, 'Function' ) &&
+                    node.isBoolean() &&
+                    !node.valueOf()
+                )
+            ) ? true : !node;
         }
 
         return node;
@@ -2926,12 +2994,12 @@
         '|' +   '(\\[|\\()' +                                               // [4] child = findPathCondition
         '|' +   '(\\]|\\))\\.?' +                                           // [5] END of this PathConditionGroup
 
-        '|' +   '(\\d+(?:\\.\\d+)?)(?!\\.|:)' +                                             // [6] Number
+        '|' +   '(-?\\d+(?:\\.\\d+)?)(?![\\.:~\\d])' +                      // [6] Number
         '|' +   '(true|false)' +                                            // [7] Boolean String
         '|' +   '"((?:[^"\\\\]*|\\\\"|\\\\)*)"' +                           // [8] DoubleQuotet String
         '|' +   "'((?:[^'\\\\]*|\\\\'|\\\\)*)'" +                           // [9] SingleQuotet String
         '|' +   '\\/((?:[^\\/\\\\]*|\\\\\\/|\\\\)+)\\/([igm]{1,3})?' +      // [10] RegExp inclusive Flags
-        '|' +   '\\$([\\w]+)' +                                             // [11] varName for includet values
+        '|' +   '\\$([\\w]+)\\s?(?![\\w\\.:])' +                            // [11] varName for includet values
         
         '|' +   '.+' +                      //     parse() findPathDoc
     ')\\s*';
@@ -2973,7 +3041,7 @@
             this._index = regCondition.lastIndex;
             countContition += 1;
 
-            // console.log('');
+            // console.log('findPathCondition', score.xTo() );
             // print( this, 'findPathCondition', score );
 
             // \\!=|[<>=]{1,2}
@@ -3060,7 +3128,7 @@
             // console.log('PathConditionGroup.exec &', tmp );
 
             if ( !tmp ) {
-                throw new Break();
+                throw new End();
             }
             return;
         }
@@ -3076,7 +3144,7 @@
                     args: tmp
                 });
 
-                throw new Break();
+                throw new End();
             }
             return;
         }
@@ -3266,14 +3334,14 @@
      * @type {external:String}
      */
     var strPathDoc = '\\s*(?:' +
-                '(\\.)' +                                  // [1] Parent Doc
-        '|' +   '(-?\\d*~\\d*|-\\d+)\\.?' +                // [2] Limit items
-        '|' +   '(\\d+|[a-z][a-z\\d\\-]*)\\.?' +           // [3] Doc Attribute-Name
-        '|' +   '([*#+])\\.?' +                            // [4] Value Node
-        '|' +   '\\$([a-z\\d_]+)\\.?' +                    // [5] Repeat
-        '|' +   '(:)' +                                    // [6] findFunction
-        '|' +   '(\\[|\\()' +                              // [7] findCondition
-        '|' +   '.+' +                                     //     END of findDoc
+                '(\\.)' +                                  // [1]   Parent Doc
+        '|' +   '(\\^)?(-?\\d*~\\d*|-\\d+)\\.?' +          // [2,3] Limit items
+        '|' +   '(\\d+|[a-z][a-z\\d\\-]*)\\.?' +           // [4]   Doc Attribute-Name
+        '|' +   '(\\^)?([*#+])\\.?' +                      // [5,6] Value Node
+        '|' +   '\\$([a-z\\d_]+)\\.?' +                    // [7]   Repeat
+        '|' +   '(:)' +                                    // [8]   findFunction
+        '|' +   '(\\[|\\()' +                              // [9]   findCondition
+        '|' +   '.+' +                                     //       END of findDoc
     ')\\s*';
     
     /**
@@ -3302,34 +3370,37 @@
 
         this._index = regPathDoc.lastIndex;
 
+        // console.log( 'findPathDoc', score.xTo() );
         // print( this, 'findPathDoc', score );
 
-        // \\.
+        // (\\.)
         if ( score[1] !== undefined ) {
             obj = new PathParent( parent ).parse();
         }
-        // (-?\\d*~\\d*|-\\d+)\\.?
-        else if ( score[2] !== undefined ) {
-            obj = new PathLimit( parent, score[2] ).parse();
+        // (\\^)?(-?\\d*~\\d*|-\\d+)\\.?
+        else if ( score[3] !== undefined ) {
+            obj = new PathLimit( parent, score[3] ).parse();
+            obj._revlist = score[2];
         }
         // (\\d+|[a-z][a-z\\d\\-]*)\\.?
-        else if ( score[3] !== undefined ) {
-            obj = new PathDoc( parent, score[3] ).parse();
-        }
-        // [*#+]
         else if ( score[4] !== undefined ) {
-            obj = new PathRepeat( parent, score[4] ).parse();
+            obj = new PathDoc( parent, score[4] ).parse();
+        }
+        // (\\^)?([*#+])\\.?
+        else if ( score[6] !== undefined ) {
+            obj = new PathRepeat( parent, score[6] ).parse();
+            obj._revlist = score[5];
         }
         // \\$([a-z\\d_]+)\\.?
-        else if ( score[5] !== undefined ) {
-            obj = new PathDoc( parent, this.valueKey( score[5] ) ).parse();
+        else if ( score[7] !== undefined ) {
+            obj = new PathDoc( parent, this.valueKey( score[7] ) ).parse();
         }
-        // :
-        else if ( score[6] !== undefined ) {
+        // (:)
+        else if ( score[8] !== undefined ) {
             obj = findPathFunction.call( this, parent );
         }
-        // \\[|\\(
-        else if ( score[7] !== undefined ) {
+        // (\\[|\\()
+        else if ( score[9] !== undefined ) {
             obj = new PathFilter( parent ).parse();
         }
         else {
@@ -3439,9 +3510,17 @@
     pathLimitProto.exec = function( node ) {
         node.xEach({
             self: this,
+            reverse: this._revlist,
             start: configPropsTop.call( node, 'optStart', this._start, 0 ),
             limit: configPropsTop.call( node, 'optLimit', this._limit, 10 ),
             success: function( item ) {
+                var specific = this.specific();
+                var testSpecific = specific ? execValue( specific, item ) : true;
+
+                if ( !testSpecific ) {
+                    throw new EndPath();
+                }
+
                 nextTick.call( this, item );
             }
         });
@@ -3573,6 +3652,7 @@
     var tplFunctionArgs = '(?:[^)\\\\]*|\\\\\\)|\\\\)+';
     var strFunction = '(?:(\\.)|(\\w+)(?:\\((' + tplFunctionArgs + ')\\))?\\.?)\\s*|.+';
     var regFunction = new RegExp( strFunction, 'g' );
+    var reqFunctionEscape = /\\([\(\)])/g;
 
     function findPathFunction( parent ) {
         var score;
@@ -3601,7 +3681,7 @@
             obj = new PathFunction( parent, score[2] );
 
             if ( score[3] && score[3].length > 0 ) {
-                obj._args = JSON.parse('['+score[3]+']');
+                obj._args = JSON.parse('[' + score[3].replace( reqFunctionEscape, '$1' ) + ']');
             }
         }
         else {
@@ -3645,7 +3725,8 @@
         // console.log('PathFunction.exec', this.name() );
 
         if ( !isFunction( node[ this.name() ] ) ) {
-            throw new Error('PathFunction ' + this.name() + ' is not defined!');
+            // throw new Error('PathFunction ' + this.name() + ' is not defined!');
+            return;
         }
 
         node = node[ this.name() ].apply( node, this.args() );
@@ -3732,7 +3813,7 @@
         if ( reason._limit !== -1 && picker._note.Length() >= reason._limit ) {
             // console.log('nextTick.limit', reason._limit, picker.note.list.own );
             picker.Talk();
-            throw new End();
+            throw new EndPath();
         }
     }
 
@@ -3756,7 +3837,7 @@
         }
         catch (err) {
 
-            if ( err instanceof End ) {
+            if ( err instanceof EndPath ) {
                 return;
             }
             else if ( reason._preset !== undefined ) {
@@ -3768,11 +3849,11 @@
 
                 return;
             }
-            else if ( err instanceof Break ) {
-                return;
-            }
+            // else if ( err instanceof Break ) {
+            //     return;
+            // }
 
-            throw new Error(err);
+            throw err;
         }
 
     }
@@ -3891,6 +3972,10 @@
         self = option.self || this;
         option.limit = option.limit || -1;
         option.start = option.start || 0;
+        
+        option.values = option.values || {};
+        option.values.self = option.values.self || this;
+
         // option.level = 0;
 
         var object = new Path( option );
