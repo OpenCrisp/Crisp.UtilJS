@@ -7,6 +7,8 @@ exports['UtilJS'] = function(assert) {
     var done = assert.done || assert.async();
     assert.expect(1);
 
+    var testList = [];
+
     var autos = [{
         "maker": "Nissan",
         "model": "Teana",
@@ -34,8 +36,11 @@ exports['UtilJS'] = function(assert) {
     autos.pathFind({
         path: '*.( maker == "Honda" & year > 2009 )',
         // path: '*.( maker == "Honda" & year > 2009 )',
-        complete: function( e ) {
-            assert.deepEqual( e.List(), [ { data: autos[1] }, { data: autos[4] } ] );
+        success: function ( item ) {
+            testList.push( item );
+        },
+        complete: function () {
+            assert.deepEqual( testList, [ autos[1], autos[4] ] );
         }
     });
 

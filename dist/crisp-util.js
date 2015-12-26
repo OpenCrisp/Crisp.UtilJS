@@ -1,7 +1,7 @@
-/*! OpenCrisp UtilJS - v0.1.5 - 2015-10-31
+/*! OpenCrisp UtilJS - v0.2.0 - 2015-12-27
 * https://github.com/OpenCrisp/Crisp.UtilJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
-/*! OpenCrisp BaseJS - v0.3.0 - 2015-10-31
+/*! OpenCrisp BaseJS - v0.5.2 - 2015-12-26
 * https://github.com/OpenCrisp/Crisp.BaseJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 /**
@@ -53,6 +53,7 @@
 
     /**
      * @private
+     * @deprecated 
      * 
      * @param       {util.utilTickCallback}  callback
      * @param       {AnyItem}                opt
@@ -182,6 +183,8 @@
         /**
          * execute function with (async) {@link util.utilTickCall}
          * 
+         * @deprecated change to {@linkcode module:BaseJS.utilTack|Crisp.utilTack( opt, success, complete )}
+         * 
          * @param       {external:Object}         [self=opt.self] alternate of opt.self and return param
          * @param       {util.utilTickCallback}   callback        Function for apply
          * @param       {external:Object}         [opt]           Options for apply
@@ -220,8 +223,14 @@
             opt = opt || {};
             self = self || opt.self;
 
+            if ( opt.async ) {
+                async = true;
+                delete opt.async;
+            }
+
             if ( async ) {
-                setTimeout( utilTickCall, 0, callback, self, opt );
+                g.Crisp.nextTick( utilTickCall, callback, self, opt );
+                return self;
             }
             else {
                 utilTickCall( callback, self, opt );
@@ -485,7 +494,107 @@
 (function($$) {
 
     var Break = $$.ns('util.control.Break');
+
+    /**
+     * nextTick
+     * @param  {external.Function}
+     * @param  {*}
+     */
+    var nextTick = (function() {
+        if (typeof process === 'object' && typeof process.nextTick === 'function') {
+            return process.nextTick;
+        }
+        else if (typeof setImmediate === 'function') {
+            return setImmediate;
+        }
+        else {
+            return function(fn) {
+                return setTimeout.apply(null, [fn, 0].concat( Array.prototype.slice.call(arguments).slice(1) ));
+            };
+        }
+    })();
+
+    $$.nextTick = nextTick;
+
+
+    function nextTickTackDefault( methodCallback, self, opt, success, complete ) {
+        methodCallback.call( self, opt, success );
+        complete.call( self, opt );
+    }
+
+    /**
+     * [utilTack description]
+     * @param  {external.Function} methodCallback [description]
+     * @param  {external.Array}    methodSchema   [description]
+     * @return {external.Function}                [description]
+     */
+    function utilTack( methodCallback, methodSchema ) {
+        function tackDefault( opt, success, complete ) {
+            var async;
+
+            if ( opt.async ) {
+                async = opt.async;
+                delete opt.async;
+            }
+
+            // reverse compatibility
+            success = success || opt.success || Break;
+            complete = complete || opt.complete || Break;
+
+            if ( async ) {
+                nextTick( nextTickTackDefault, methodCallback, this, opt, success, complete );
+            }
+            else {
+                methodCallback.call( this, opt, success );
+                complete.call( this, opt );
+            }
+            
+            return this;
+        }
+
+        Object.defineProperty( tackDefault, 'tick', { value: methodSchema || true });
+        Object.defineProperty( tackDefault, 'callback', { value: methodCallback });
+
+        return tackDefault;
+    }
+
+    $$.utilTack = utilTack;
+
+
+    /**
+     * [callSchema description]
+     * @param  {external.Array} schema [description]
+     * @param  {external.Arguments} args   [description]
+     * @return {external.Object}        [description]
+     */
+    function callSchema( schema, args ) {
+        var key;
+        var opt = {};
+
+        if (Crisp.type.call(args[0], 'Object')) {
+            return args[0];
+        }
+
+        schema = schema || [];
+
+        for (var i=0, m=args.length; i<m; i+=1 ) {
+            key = schema[i] || i;
+            opt[key] = args[i];
+        }
+
+        return opt;
+    }
+
+    $$.callSchema = callSchema;
+
+
+})(Crisp);
+
+(function($$) {
+
+    var Break = $$.ns('util.control.Break');
     var End = $$.ns('util.control.End');
+    var utilTack = $$.utilTack;
 
     
     /**
@@ -601,7 +710,7 @@
      * // success: 1 B
      * // complete
      */
-    function xEachArray( option ) {
+    function xEachArray( option, success, picker ) {
         var index,
         
             i = 0,
@@ -637,7 +746,7 @@
             try {
                 index = ( i + start ) * reverse;
 
-                option.success.call( option.self, this[ index ], index );
+                success.call( option.self, this[ index ], index, picker );
             } catch (e) {
                 if ( e instanceof Break ) {
                     if ( option.reverse && option.limit ) {
@@ -656,28 +765,11 @@
         return this;
     }
 
+    $$.xEachArray = xEachArray;
+
     Object.defineProperty( Array.prototype, 'xEach', {
-        value: function( option ) {
-            return $$.utilTick( this, xEachArray, option, option.async );
-        }
+        value: utilTack( xEachArray )
     });
-
-
-    /**
-     * @function external:Array.prototype.xTo
-     * @implements {module:BaseJS.to}
-     * 
-     * @param {external:String} [type="json"]
-     * 
-     * @this external:Array
-     * @return {external:String}
-     *
-     * @example
-     * ['a'].xTo(); // '["a"]'
-     */
-    // Object.defineProperty( Array.prototype, 'xTo', {
-    //     value: $$.to
-    // });
 
 })(Crisp);
 
@@ -816,6 +908,7 @@
 
     var Break = $$.ns('util.control.Break');
     var End = $$.ns('util.control.End');
+    var utilTack = $$.utilTack;
 
 
     /**
@@ -882,7 +975,7 @@
      * // success: b B
      * // complete
      */
-    function xEachObject( option ) {
+    function xEachObject( option, success, picker ) {
         var index,
             keys = Object.keys( this ),
             i = 0,
@@ -918,7 +1011,7 @@
             try {
                 index = ( i + start ) * reverse;
                 name = keys[ index ];
-                option.success.call( option.self, this[ name ], name );
+                success.call( option.self, this[ name ], name, picker );
             } catch (e) {
                 if ( e instanceof Break ) {
                     if ( option.reverse && option.limit ) {
@@ -937,10 +1030,10 @@
         return this;
     }
 
+    $$.xEachObject = xEachObject;
+
     Object.defineProperty( Object.prototype, 'xEach', {
-        value: function( option ) {
-            return $$.utilTick( this, xEachObject, option, option.async );
-        }
+        value: utilTack( xEachObject )
     });
 
 
@@ -1162,7 +1255,7 @@
 
 })(Crisp);
 
-/*! OpenCrisp CreateJS - v0.2.6 - 2015-10-31
+/*! OpenCrisp CreateJS - v0.2.8 - 2015-12-26
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
 
@@ -1660,7 +1753,7 @@
 
 
 }(Crisp));
-/*! OpenCrisp EventJS - v0.2.2 - 2015-10-31
+/*! OpenCrisp EventJS - v0.4.1 - 2015-12-26
 * https://github.com/OpenCrisp/Crisp.EventJS
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
@@ -1678,10 +1771,12 @@
      * @see  util.event.EventPickerNote#Add
      */
 
-
+    var nextTick        = $$.nextTick;
     var utilTick        = $$.utilTick;
-    var stringToRegExp    = RegExp.escape;
+    var stringToRegExp  = RegExp.escape;
     var type            = $$.type;
+
+    function noop() {}
     
 
     /**
@@ -1709,6 +1804,8 @@
      */
     var defaultPickerAction = 'task';
 
+    var defaultOptionEvent = '__event__';
+    var defaultOptionParent = '__parent__';
 
     /**
      * Action to RegExp find left string
@@ -1918,6 +2015,18 @@
             if ( this._wait > 0 || ( !this._empty && this._note.Empty() ) ) {
                 return this;
             }
+
+            return this.End();
+        },
+
+        /**
+         * trigger this event
+         * 
+         * @this util.event.EventPicker
+         * @returns {util.event.EventPicker}
+         */
+        End: function() {
+            this._wait = 0;
 
             delete this.picker[ this._treat ];
             this.self.eventTrigger( this );
@@ -2430,6 +2539,13 @@
     };
 
 
+    function defaultOption( opt ) {
+        opt = opt || {};
+        opt.event = opt.event || defaultOptionEvent;
+        opt.parent = opt.parent || defaultOptionParent;
+        return opt;
+    }
+
     /**
      * Create mothods from EventJS on any Object
      * @function module:BaseJS.defineEvent
@@ -2442,7 +2558,7 @@
      * @tutorial {@link http://opencrisp.wca.at/tutorials/EventJS_test.html#defineEvent}
      * 
      */
-    $$.defineEvent = function( moduleObject, moduleOption ) {
+    function defineEvent( moduleObject, moduleOption ) {
 
         /**
          * define all event functions on your own object
@@ -2469,9 +2585,10 @@
          * myObject.eventTrigger();
          */
 
-        moduleOption = moduleOption || {};
-        moduleOption.event = moduleOption.event || '__event__';
-        moduleOption.parent = moduleOption.parent || '__parent__';
+        // moduleOption = moduleOption || {};
+        // moduleOption.event = moduleOption.event || defaultOptionEvent;
+        // moduleOption.parent = moduleOption.parent || defaultOptionParent;
+        moduleOption = defaultOption( moduleOption );
 
         /**
          * @property {util.event.Event}
@@ -2666,43 +2783,179 @@
         });
 
         return moduleObject;
-    };
+    }
+
+    $$.defineEvent = defineEvent;
+
+
+    /**
+     * The hasOwnEvent() method returns a boolean indicating whether the moduleObject has specified the Event module 
+     * @param  {external:Object} moduleObject any Object for initiate EventJS methods
+     * @param  {external:Object} [moduleOption]
+     * @param  {external:String} [moduleOption.event=__event__] name of event cache property
+     * @param  {external:String} [moduleOption.parent=__parent__] name of parent reference property
+     * @return {Boolean}              [description]
+     */
+    function hasOwnEvent( moduleObject, moduleOption ) {
+        moduleOption = defaultOption( moduleOption );
+        return moduleObject.hasOwnProperty( moduleOption.event ) && ( moduleObject[ moduleOption.event ] instanceof Event );
+    }
+
+    $$.hasOwnEvent = hasOwnEvent;
+
+
+
+    function nextTickPick( methodCallback, self, opt, success, picker ) {
+        methodCallback.call( self, opt, success, picker );
+        picker.Talk();
+    }
+
+    function utilPick( methodCallback, methodSchema ) {
+        function tackPick( opt, success, complete ) {
+            var event = {};
+            var picker;
+
+            success = success || noop;
+            
+            $$.defineEvent( event );
+
+            if ( complete ) {
+                event.eventListener({
+                    self: this,
+                    listen: complete
+                });
+            }
+            
+            picker = event.eventPicker({
+                cache: {},
+                empty: true
+            });
+
+            if ( opt.async ) {
+                nextTick( nextTickPick, methodCallback, this, opt, success, picker );
+            }
+            else {
+                methodCallback.call( this, opt, success, picker );
+                picker.Talk();
+            }
+
+            return this;
+        }
+
+        Object.defineProperty( tackPick, 'tick', { value: methodSchema || true });
+        Object.defineProperty( tackPick, 'callback', { value: methodCallback });
+
+        return tackPick;
+    }
+
+    $$.utilPick = utilPick;
+
+
+
+
+
+
+    function nextTickTask( methodCallback, self, opt, success, type ) {
+        var eventTask, eventChanged;
+
+        eventTask = self.eventPicker({
+            cache: opt,
+            action: 'task.doc.' + type
+        });
+
+        eventChanged = self.eventPicker({
+            cache: opt,
+            action: 'changed.doc.' + type
+        });
+
+        function note( task ) {
+            self.eventTrigger( task );
+            eventTask.Note( task );
+            eventChanged.Note( task );
+        }
+
+        methodCallback.call( self, opt, success, note );
+
+        eventTask.Talk();
+        eventChanged.Talk();
+    }
+
+    /**
+     * [utilTask description]
+     * @param  {external.Function} methodCallback [description]
+     * @param  {external.String} methodType     [description]
+     * @param  {external.Array} methodSchema   [description]
+     * @return {this}                [description]
+     */
+    function utilTask( methodCallback, methodType, methodSchema ) {
+        function tackTask( opt, success ) {
+            var async;
+
+            success = success || noop;
+            
+            if ( opt.async ) {
+                async = opt.async;
+                delete opt.async;
+            }
+
+            if ( async ) {
+                nextTick( nextTickTask, methodCallback, this, opt, success, methodType );
+            }
+            else {
+                nextTickTask( methodCallback, this, opt, success, methodType );
+            }
+
+            return this;
+        }
+
+        return Object.defineProperty( tackTask, 'task', { value: methodSchema || true });
+    }
+
+    $$.utilTask = utilTask;
 
 })(Crisp);
-/*! OpenCrisp PathJS - v0.5.1 - 2015-10-31
+/*! OpenCrisp PathJS - v1.0.0 - 2015-12-26
 * http://opencrisp.wca.at/docs/util.path.html
 * Copyright (c) 2015 Fabian Schmid; Licensed MIT */
 (function($$) {
 
-    // function print( self, name, score ) {
-    //     // return;
+    console.log( (function ( _ ) {
+        _.view = function ( self, name, set ) {
+            // return;
+            // console.warn(self);
+            var level;
+            
+            if ( set === 1 ) {
+                self._level = self.reason().level = self.reason().level + 1;
+            }
+            
+            level = 4 * self._level;
+            
+            var str = printFill( '', level ) + name;
 
-    //     var level = 4 * self.level;
-    //     var str = '\x1B[37m' + printFill( self._index, 5 + level ) + '\x1B[39m' + printFill( name, 40 - level );
+            if ( !set ) {
+                self.reason().level = self._level - 1;
+            }
 
-    //     if (score) {
-    //      score.forEach(function( item, self ) {
-    //          var color = self === 0 ? '\x1B[31m' : '\x1B[32m';
-    //          var size = self === 0 ? 30 : 10;
-    //          str += '\x1B[90m> ' + color + printFill( item || '', size );
-    //      });
-    //     }
-    //     else {
-    //      str = printFill( str, 200, '-');
-    //     }
+            // str = printFill( str, 200, '-');
 
-    //     console.log( str );
-    // }
+            if (1) {
+                return;
+            }
+            _.log( str );
+        };
 
-    // function printFill( str, m, fill ) {
-    //     fill = fill || ' ';
-    //     str = ''.concat(str);
-    //     for ( var i = str.length; i<m; i+=1 ) {
-    //      str += fill;
-    //     }
-    //     return str;
-    // }
+        function printFill( str, m, fill ) {
+            fill = fill || ' ';
+            str = ''.concat(str);
+            for ( var i = str.length; i<m; i+=1 ) {
+             str += fill;
+            }
+            return str;
+        }
 
+        return "set: console.view()";
+    })( console ));
 
     var utilTick        = $$.utilTick;
     var type          = $$.type;
@@ -2711,6 +2964,8 @@
     // var Break = $$.ns('util.control.Break');
     var End = $$.ns('util.control.End');
     var EndPath = function() {};
+    function EndPicker() {}
+
 
 
     /**
@@ -2730,6 +2985,9 @@
      * @memberOf util.path
      */
     var regSingleQuote = /\\'/g;
+
+
+    // var PICK_COMPLETE = true;
 
 
     /**
@@ -2816,6 +3074,37 @@
     };
 
 
+    function pathFindEach( node, events, success ) {
+        // console.log('type of each', type.call( node.itemEach ) );
+        var fn = type.call( node.itemEach, 'Function' ) ? node.itemEach : node.xEach;
+
+        success = success || function ( doc ) {
+            nextTick.call( this, doc, null, events );
+        };
+
+        fn.callback.call(
+            node,
+            {   
+                self: this,
+                reverse: this._revlist
+            },
+            success
+        );
+    }
+
+    function pathFindEachAll( node, events ) {
+        this.child.exec({ node: node }, events );
+
+        // if ( node.isField() ) {
+        if ( !type.call( node, 'Array' ) && !type.call( node, 'Object' ) ) {
+            return;
+        }
+
+        pathFindEach.call( this, node, events, function( item ) {
+            pathFind['#'].call( this, item, events );
+        });
+    }
+
     /**
      * @namespace util.path.pathFind
      */
@@ -2827,15 +3116,7 @@
          * 
          * @param  {*} node
          */
-        '*': function( node ) {
-            node.xEach({
-                self: this,
-                reverse: this._revlist,
-                success: function( item ) {
-                    nextTick.call( this, item );
-                }
-            });
-        },
+        '*': pathFindEach,
 
         /**
          * @function util.path.pathFind.'+'
@@ -2843,18 +3124,32 @@
          * 
          * @param  {*} node
          */
-        '+': function( node ) {
+        '+': function( node, events ) {
             // console.log('pathFind.#', node.docPath(), testSpecific );
             
+            var picker = events.eventPicker({
+                cache: events,
+                action: 'complete',
+                empty: true
+            });
+
             if ( this.child ) {
                 this._specific = this.child.filter;
             }
 
-            if ( !execValue( this.specific(), node ) ) {
-                return;
-            }
-
-            this.child.exec( node );
+            pickValue.call(
+                this,
+                this.specific(),
+                node,
+                function ( valueNode ) {
+                    if ( valueNode ) {
+                        this.child.exec({ node: node }, events );
+                    }
+                },
+                function () {
+                    picker.Talk();
+                }
+            );
         },
 
         /**
@@ -2863,39 +3158,28 @@
          * 
          * @param  {*} node
          */
-        '#': function( node ) {
+        '#': function( node, events ) {
             var specific = this.specific();
-            var testSpecific = specific ? execValue( specific, node ) : true;
 
-            if ( !testSpecific ) {
-                // console.log('pathFind.#.isField');
-                return;
+            if ( specific ) {
+                pickValue.call(
+                    this,
+                    specific,
+                    node,
+                    function ( valueNode ) {
+                        // console.log(' spec', valueNode, picker._wait );
+                        if ( valueNode ) {
+                            pathFindEachAll.call( this, node, events );
+                        }
+                    },
+                    End
+                );
+            }
+            else {
+                pathFindEachAll.call( this, node, events );
             }
 
-            this.child.exec( node );
-
-            // if ( node.isField() ) {
-            if ( !type.call( node, 'Array' ) && !type.call( node, 'Object' ) ) {
-                // console.log('pathFind.#.isField');
-                return;
-            }
-            // return;
-
-            // if ( node.docNotuse() ) {
-            //  return;
-            // }
-
-            node.xEach({
-                self: this,
-                reverse: this._revlist,
-                success: function( item ) {
-                    // console.log('\x1B[31mpathFind.#.xEach', item.xTo(), '\x1B[39m' );
-
-                    pathFind['#'].call( this, item );
-                }
-            });
         }
-        
     };
 
 
@@ -2914,42 +3198,6 @@
 
 
     /**
-     * reverse given node
-     * 
-     * @private
-     * @param  {external:Number} reverse
-     * @param  {*}               node
-     * @return {external:Boolean}
-     *
-     * @memberOf util.path
-     */
-    function execReverse( reverse, node ) {
-        var i=0;
-
-        for (; i<reverse; i+=1 ) {
-            // console.log('execReverse:', type.call( node ), Boolean(node), node.valueOf() );
-            
-            node = (
-                type.call( node, 'Undefined' ) ||
-                node==='false' ||
-                node===false ||
-                (
-                    type.call( node, 'Boolean' ) && 
-                    !node.valueOf()
-                ) || 
-                (
-                    type.call( node.isBoolean, 'Function' ) &&
-                    node.isBoolean() &&
-                    !node.valueOf()
-                )
-            ) ? true : !node;
-        }
-
-        return node;
-    }
-
-
-    /**
      * @private
      * @param  {*}               ref
      * @param  {*}               node
@@ -2957,27 +3205,54 @@
      *
      * @memberOf util.path
      */
-    function execValue( ref, node ) {
-        var val;
+    function pickValue( ref, node, success, complete ) {
+        var self = this;
 
         if ( !ref ) {
+            console.error('pickValue !ref return');
             return;
         }
 
-        ref._reason = {};
-        $$.defineEvent( ref._reason );
+        var events = {};
+        $$.defineEvent( events );
 
-        ref._reason.eventListener({
-            limit: 1,
+        events.eventListener({
+            // limit: 1,
+            // self: this,
             action: 'success',
-            listen: function(e) {
-                val = e;
+            // listen: success
+            listen: function ( doc ) {
+                success.call( self, doc );
             }
         });
 
-        ref.exec( node );
+        events.eventListener({
+            action: 'complete',
+            // self: this,
+            // listen: complete
+            listen: function () {
+                complete.call( self );
+            }
+        });
 
-        return val;
+        try {
+            // console.log(ref);
+            ref.exec({ node: node }, events );
+        }
+        catch ( err ) {
+            if ( err instanceof EndPicker ) {
+                // console.error( err );
+                return;
+            }
+            else if ( err instanceof EndPath ) {
+                // console.error( err );
+                return;
+            }
+
+            // throw new EndPath();
+            // console.error( err );
+            throw err;
+        }
     }
 
 
@@ -3068,6 +3343,12 @@
             }
             // (\\]|\\))\\.?
             else if ( score[5] !== undefined ) {
+                    //     complete.call( this );
+                    // }
+                    // else {
+                    //     complete.call( this );
+                    // }
+                    // else {
                 stop = true;
             }
             // (\\d+(?:\\.\\d+)?)(?!\\.|:)
@@ -3114,45 +3395,6 @@
 
 
     /**
-     * @private
-     * @param  {*} item
-     * @return {*}
-     */
-    function conditionGroupExecSuccess( item ) {
-        // console.log('PathConditionGroup.exec', this.node );
-        var tmp;
-        // var reason2 = item.reason();
-
-        if ( item.next('&') ) {
-            tmp = execValue( item, this.node );
-            // console.log('PathConditionGroup.exec &', tmp );
-
-            if ( !tmp ) {
-                throw new End();
-            }
-            return;
-        }
-        else if ( item.next('|') ) {
-            tmp = execValue( item, this.node );
-            // console.log( item, this.node );
-            // console.log('PathConditionGroup.exec |', tmp );
-
-            if ( tmp ) {
-
-                this.reason.eventTrigger({
-                    action: 'success',
-                    args: tmp
-                });
-
-                throw new End();
-            }
-            return;
-        }
-
-        item.exec( this.node );
-    }
-
-    /**
      * @class
      * @private
      * @memberOf util.path
@@ -3194,6 +3436,9 @@
 
     /**
      * @class
+                    //     complete.call( this );
+                    // }
+                    // else {
      * @private
      * @param {*} reason
      * @param {*} parent
@@ -3225,29 +3470,174 @@
     };
 
     /**
+     * @private
+     * @param  {*} item
+     * @return {*}
+     */
+    
+
+    /**
      * @param  {external:String} node
      * @return {*}
      */
-    pathConditionGroupProto.exec = function( node ) {
-        var reason = this.reason();
+    // pathConditionGroupProto.exec = Crisp.utilPick( function ( option, success ) {
+    pathConditionGroupProto.exec = function ( option, events ) {
+        // console.log('pathConditionGroupProto.exec');
+        console.view( this, '(', 1 );
+        // console.log(this.condition);
 
-        var picker = reason.eventPicker({
-            cache: reason,
+        var picker = events.eventPicker({
+            cache: events,
             action: 'complete',
             empty: true
         });
-
-        this.condition.xEach({
-            self: {
-                node: node,
-                reason: reason
+        
+        this.condition.xEach(
+            {
+                self: this
             },
-            success: conditionGroupExecSuccess
-        });
+            function conditionGroupExecSuccess( item ) {
+                // console.log('PathConditionGroup.exec', this.node.xTo() );
+                
+                picker.Wait();
 
-        picker.Talk();
+                if ( item.next('&') ) {
+                    // console.log('== next &&&&&&&&&&&&');
+
+                    pickValue.call(
+                        this,
+                        item,
+                        option.node,
+                        function ( valueNode ) {
+                            // valuePicker.Talk();
+
+                            if ( !valueNode ) {
+                                picker.Talk();
+                                throw new End();
+                            }
+                        },
+                        function () {
+                            picker.Talk();
+                        }
+                    );
+
+                    return;
+                }
+                else if ( item.next('|') ) {
+                    // console.log('== next |||||||||||||');
+                    console.view( this, '|', 2 );
+
+                    pickValue.call(
+                        this,
+                        item,
+                        option.node,
+                        function ( valueNode ) {
+                            // console.log('.. ', valueNode, (picker === valuePicker) );
+                            // console.log('--', valueNode );
+                            if ( valueNode ) {
+                                nextTick.call( this, valueNode, picker, events );
+                                picker.Talk();
+                                throw new End();
+                            }
+                        },
+                        function () {
+                            picker.Talk();
+                        }
+                    );
+
+                    return;
+                }
+
+                item.exec({ node: option.node }, events );
+                picker.Talk();
+            },
+            function () {
+                // console.warn('pathConditionGroupProto.exec complete')
+                console.view( arguments[0].self, ')' );
+                picker.Talk();
+            }
+        );
     };
 
+
+    /**
+     * reverse given node
+     * 
+     * @private
+     * @param  {external:Number} reverse
+     * @param  {*}               node
+     * @return {external:Boolean}
+     *
+     * @memberOf util.path
+     */
+    
+
+
+    function pickReverseEach( reverse, node, callback ) {
+        var test = type.call( node, 'Undefined' ) ||
+            node==='false' ||
+            node===false ||
+            (
+                type.call( node, 'Boolean' ) && 
+                !node.valueOf()
+            );
+
+        if ( test ) {
+            pickReverse.call( this, reverse, true, callback );
+        }
+        else if ( type.call( node.isBoolean, 'Function' ) ) {
+            if ( node.isBoolean.tick ) {
+
+            }
+            else {
+                pickReverse.call( this, reverse, ( ( node.isBoolean() && !node.valueOf() ) || !node ), callback );
+            }
+        }
+        else {
+            pickReverse.call( this, reverse, !node, callback );
+        }
+    }
+
+
+    function pickReverse( reverse, node, callback ) {
+        // console.error('pickReverse', reverse);
+
+        if ( reverse > 0 ) {
+            reverse = reverse - 1;
+            pickReverseEach.apply( this, arguments );
+        }
+        else {
+            callback.call( this, node );
+        }
+    }
+
+
+    function pickOperator( operator, node, success, complete ) {
+        if ( !operator ) {
+            success.call( this, node );
+            complete.call( this );
+            return;
+        }
+
+        pickValue.call(
+            this,
+            this.value,
+            node,
+            function ( valueNode ) {
+
+                if ( valueNode instanceof RegExp ) {
+                    node = valueNode.test( node );
+                    valueNode = true;
+                }
+
+                node = pathOperator[ operator ]( node, valueNode );
+
+                // console.log('-- operator:', operator, node, valueNode );
+                success.call( this, node );
+            },
+            complete
+        );
+    }
 
     /**
      * @class
@@ -3275,36 +3665,64 @@
      * @param  {*} node
      * @return {*}
      */
-    pathConditionProto.exec = function( node ) {
-        var child, value;
+    pathConditionProto.exec = function ( option, events )  {
+        // console.log('pathConditionProto.exec', option.node.xTo(), ( !this.reverse() && !this.operator() ) );
+        console.view( this, '>', 1 );
 
-        // console.log('exec PathCondition', node );
-
-        if ( !this.reverse() && !this.operator() ) {
-            return nextTick.call( this, node );
-        }
-
-        child = execValue( this.child, node );
-        child = execReverse( this.reverse(), child );
-        
-        if ( this.operator() ) {
-
-            value = execValue( this.value, node );
-
-            if ( value instanceof RegExp ) {
-                child = value.test( child );
-                value = true;
-            }
-
-            child = pathOperator[ this.operator() ]( child, value );
-            // console.log('-- operator:', this.operator(), child, value );
-        }
-
-        this.reason().eventTrigger({
-            action: 'success',
-            args: child
+        var picker = events.eventPicker({
+            cache: events,
+            action: 'complete',
+            empty: true
         });
+        
+        if ( !this.reverse() && !this.operator() ) {
+            // callback.call( this, option.node );
+            // console.log('no reverse|operator');
+            nextTick.call( this, option.node, picker, events );
+            picker.Talk();
+            console.view( this, '< simple' );
+            return;
+        }
+
+        // child = execValue( this.child, option.node );
+        // console.log('start', option.node );
+        pickValue.call(
+            this,
+            this.child,
+            option.node,
+            function ( valueNode ) {
+                // console.log('valueNode', valueNode );
+                pickReverse.call(
+                    this,
+                    this.reverse(),
+                    valueNode,
+                    function ( reverseNode ) {
+                        // console.log('reverseNode', valueNode );
+                        picker.Wait();
+                        pickOperator.call(
+                            this,
+                            this.operator(),
+                            reverseNode,
+                            function ( operatorNode ) {
+                                events.eventTrigger({
+                                    action: 'success',
+                                    args: operatorNode
+                                });
+                            },
+                            function () {
+                                picker.Talk();
+                            }
+                        );
+                    }
+                );
+            },
+            function () {
+                picker.Talk();
+                console.view( this, '<' );
+            }
+        );
     };
+
 
     /**
      * @return {*}
@@ -3394,6 +3812,7 @@
         // \\$([a-z\\d_]+)\\.?
         else if ( score[7] !== undefined ) {
             obj = new PathDoc( parent, this.valueKey( score[7] ) ).parse();
+            obj._valkey = score[7];
         }
         // (:)
         else if ( score[8] !== undefined ) {
@@ -3438,16 +3857,51 @@
     /**
      * @return {*}
      */
-    pathFilterProto.exec = function( node ) {
+    // var filterCount = 0;
+    pathFilterProto.exec = function ( option, events ) {
+        // console.log('PathFilter.exec', option.node );
+        var node = option.node;
+        // var filter = filterCount = filterCount + 1;
+        console.view( this, '[', 1 );
+
         // console.log('PathFilter.exec', !execValue( this.filter, node ) );
         // console.log('============== PathFilter.exec ============' );
 
-        if ( !execValue( this.filter, node ) ) {
-            return;
-        }
+        var picker = events.eventPicker({
+            cache: events,
+            action: 'complete',
+            empty: true
+        });
 
-        nextTick.call( this, node );
-        return true;
+        // console.log('-- filter', node );
+
+        var self = this;
+
+
+
+        
+        pickValue.call(
+            this,
+            this.filter,
+            node,
+            function ( valueNode ) {
+                // console.log('filter', filter, valueNode );
+                // node = valueNode;
+                // console.log('pathFilterProto', filter, valueNode );
+                if ( valueNode ) {
+                    nextTick.call( self, node, picker, events );
+                }
+                // picker.Talk();
+            },
+            function () {
+                console.view( this, ']' );
+                // console.log('pathFilterProto', filter, node );
+                // if ( node ) {
+                //     nextTick.call( this, option.node, picker );
+                // }
+                picker.Talk();
+            }
+        );
     };
 
 
@@ -3460,14 +3914,14 @@
      * @param  {external:Number}   alt  [description]
      * @return {external:Number}        [description]
      */
-    function configPropsTop( fn, conf, alt ) {
-        try {
-            return this._('config')[ fn ]( conf );
-        }
-        catch (e) {
-            return conf || alt;
-        }
-    }
+    // function configPropsTop( fn, conf, alt ) {
+    //     try {
+    //         return this._('config')[ fn ]( conf );
+    //     }
+    //     catch (e) {
+    //         return conf || alt;
+    //     }
+    // }
 
 
     /**
@@ -3507,23 +3961,65 @@
     /**
      * @return {*}
      */
-    pathLimitProto.exec = function( node ) {
-        node.xEach({
-            self: this,
-            reverse: this._revlist,
-            start: configPropsTop.call( node, 'optStart', this._start, 0 ),
-            limit: configPropsTop.call( node, 'optLimit', this._limit, 10 ),
-            success: function( item ) {
-                var specific = this.specific();
-                var testSpecific = specific ? execValue( specific, item ) : true;
+    pathLimitProto.exec = function( option, events ) {
+        // console.log('== limit', node );
+        console.view( this, '>~', 1 );
 
-                if ( !testSpecific ) {
-                    throw new EndPath();
-                }
-
-                nextTick.call( this, item );
-            }
+        var picker = events.eventPicker({
+            cache: events,
+            action: 'complete',
+            empty: true
         });
+
+        function success( item ) {
+            var specific = this.specific();
+ 
+            if ( specific ) {
+                pickValue.call(
+                    this,
+                    specific,
+                    item,
+                    function ( valueNode ) {
+                        // console.log(' spec', valueNode, picker._wait );
+                        if ( valueNode ) {
+                            nextTick.call( this, item, null, events );
+                        }
+                    }
+                );
+            }
+            else {
+                nextTick.call( this, item, null, events );
+            }
+        }
+
+        var opt = {
+            self: this,
+            reverse: this._revlist
+        };
+
+        var fn;
+
+        if ( type.call( option.node.itemLimit, 'Function' ) ) {
+            opt.start = this._start;
+            opt.limit = this._limit;
+
+            // console.log('limit.exec itemLimit', opt );
+            // option.node.itemLimit( opt, success, complete );
+            fn = option.node.itemLimit;
+        }
+        else {
+            opt.start = this._start || 0;
+            opt.limit = this._limit || 10;
+
+            // console.log('limit.exec xEach', opt );
+            // option.node.xEach( opt, success, complete );
+            fn = option.node.xEach;
+        }
+
+        fn.callback.call( option.node, opt, success );
+        picker.Talk();
+        
+        console.view( this, '<~' );
     };
     
 
@@ -3552,9 +4048,10 @@
     /**
      * @return {*}
      */
-    pathParentProto.exec = function( node ) {
+    pathParentProto.exec = function( option, events ) {
         // console.log('PathParent.exec' );
-        nextTick.call( this, node.__parent__ );
+        console.view( this, '..', 1 );
+        nextTick.call( this, option.node.__parent__, null, events );
     };
 
 
@@ -3586,16 +4083,37 @@
     /**
      * @return {*}
      */
-    pathDocProto.exec = function( node ) {
+    pathDocProto.exec = function( option, events ) {
         // console.log('PathDoc.exec', this.attr() );
-
-        if ( !node[ this.attr() ] ) {
+        var self = this;
+        
+        var picker = events.eventPicker({
+            cache: events,
+            action: 'complete',
+            empty: true
+        });
+        
+        if ( !type.call( option.node[ this.attr() ], 'Undefined' ) ) {
+            nextTick.call( this, option.node[ this.attr() ], picker, events );
+            picker.Talk();
             return;
         }
 
-        node = node[ this.attr() ];
+        if ( this._valkey ) {
+            option.node = this.child.exec({ node: this.attr() }, events);
+            picker.Talk();
+            return;
+        }
+        else if ( !type.call( option.node.pathInclude, 'Function' ) ) {
+            picker.Talk();
+            return;
+        }
 
-        nextTick.call( this, node );
+
+        option.node.pathInclude( this.attr(), function( item ) {
+            nextTick.call( self, item, picker, events );
+            picker.Talk();
+        });
     };
 
     /**
@@ -3634,9 +4152,12 @@
     /**
      * @return {*}
      */
-    pathRepeatProto.exec = function( node ) {
-        // console.log('PathRepeat.exec', this.type(), node );
-        pathFind[ this.type() ].call( this, node );
+    pathRepeatProto.exec = function( option, events ) {
+        // console.log('PathRepeat.exec', this.type(), option.node );
+        console.view( this, '>' + this.type(), 1 );
+
+        pathFind[ this.type() ].call( this, option.node, events );
+        console.view( this, '<' + this.type() );
     };
 
     /**
@@ -3721,17 +4242,52 @@
     /**
      * @return {*}
      */
-    pathFunctionProto.exec = function( node ) {
+    pathFunctionProto.exec = function( option, events ) {
         // console.log('PathFunction.exec', this.name() );
+        var opt, picker;
+        var self = this;
+        var fn = option.node[ this.name() ];
 
-        if ( !isFunction( node[ this.name() ] ) ) {
+        if ( !isFunction( fn ) ) {
             // throw new Error('PathFunction ' + this.name() + ' is not defined!');
             return;
         }
 
-        node = node[ this.name() ].apply( node, this.args() );
+        console.view( this, '>:' + this.name(), 1 );
 
-        nextTick.call( this, node );
+        
+        picker = events.eventPicker({
+            cache: events,
+            action: 'complete',
+            empty: true
+        });
+
+        if ( !fn.tick ) {
+            option.node = fn.apply( option.node, this.args() );
+            // console.log('-- fn:', option.node );
+            nextTick.call( this, option.node, picker, events );
+            picker.Talk();
+            console.view( this, '<:' + this.name() );
+            return;
+        }
+
+        opt = $$.callSchema( fn.schema || fn.tick, this.args() );
+        // console.log('pathFunctionProto');
+
+        function successExec( doc ) {
+            // console.log( self.name(), 'pathFunctionProto successExec', option.node);
+            console.view( self, '- ' + option.node.xTo(), 2 );
+            // console.log('successExec:', doc );
+            nextTick.call( self, doc, picker, events );
+        }
+        
+        function completeExec() {
+            // console.log( self.name(), 'pathFunctionProto completeExec', option.node);
+            console.view( self, '<::' + self.name() );
+            picker.Talk();
+        }
+        
+        fn.call( option.node, opt, successExec, completeExec, picker );
     };
 
     /**
@@ -3745,7 +4301,7 @@
      * @return {*}
      */
     pathFunctionProto.args = function() {
-        return this._args;
+        return [].xAdd( this._args );
     };
 
 
@@ -3769,50 +4325,56 @@
     /**
      * @return {*}
      */
-    pathValueProto.exec = function() {
+    pathValueProto.exec = function( option, events ) {
         // console.log('PathValue.exec', this.name() );
-        nextTick.call( this, this._value );
+        
+        var picker = events.eventPicker({
+            cache: events,
+            action: 'complete',
+            empty: true
+        });
+
+        nextTick.call( this, this._value, picker, events );
+        picker.Talk();
     };
 
 
 
 
 
-    function nextTick( node ) {
+    function nextTick( node, picker, events ) {
         // console.log('nextTick:', node );
 
         if ( this.child ) {
-            return this.child.exec( node );
+            this.child.exec({ node: node }, events );
+            return;
         }
 
         var reason = this.reason();
-        
+
         // stop callback of success if ._start > 0
         if ( ( reason._count += 1 ) <= reason._start ) {
             return;
         }
 
-        var picker = reason.eventPicker({
-            cache: reason,
-            action: 'complete',
-            empty: true
-        });
-
-        reason.eventTrigger({
+        events.eventTrigger({
             action: 'success',
             // path: path,
-            args: node
+            args: [ node ]
         });
 
-        picker.Note({
-            data: node
-        });
+        // console.log('--- nextTick', reason._count, reason._limit );
 
-        picker.Talk();
-        
-        if ( reason._limit !== -1 && picker._note.Length() >= reason._limit ) {
+        if ( reason._limit !== -1 && reason._count >= reason._limit ) {
             // console.log('nextTick.limit', reason._limit, picker.note.list.own );
-            picker.Talk();
+            
+            picker = events.eventPicker({
+                cache: events,
+                action: 'complete',
+                empty: true
+            });
+
+            picker.End();
             throw new EndPath();
         }
     }
@@ -3822,7 +4384,7 @@
 
 
 
-    function _parsePath( reason ) {
+    function _parsePath( reason, events ) {
         // console.log('path:', reason.path );
 
         var condition = findPathCondition.call( reason );
@@ -3833,19 +4395,22 @@
         // return condition.exec( this );
 
         try {
-            condition.exec( this );
+            condition.exec({ node: this }, events );
         }
         catch (err) {
 
             if ( err instanceof EndPath ) {
+                console.error( err );
                 return;
             }
             else if ( reason._preset !== undefined ) {
                 
-                reason.eventTrigger({
+                events.eventTrigger({
                     action: 'success',
                     args: reason._preset
                 });
+
+                console.error( err );
 
                 return;
             }
@@ -3958,16 +4523,33 @@
      * 
      * @see  util.path#pathFind
      * @see  module:PathJS.pathFind
+//     {
+//         path: [
+//             '+( :xType("Array").. == "false" ).#:xTo',
+//             // '+(!:xType("Array"))#:xTo',
+//             // '+.(!:xType("Array")).#.:xTo.',
+//             // ' + ( !:xType("Array") ) # : xTo ',
+//         ],
+//         value: [
+//             { data: '{"a":{"b":"B","c":"C"},"g":[{"h":"H0","i":"I0"},{"h":"H1","i":"I1"},{"h":"H2","i":"I2"},{"h":"H3","i":"I3"},{"h":"H4","i":"I4"},{"h":"H5","i":"I5"}]}' },
+//             { data: '{"b":"B","c":"C"}' },
+//             { data: '"B"' },
+//             { data: '"C"' }
+//         ]
+//     }
+// ];
      *
      * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS_test.html#pathFind|use pathFind}
      * @tutorial {@link http://opencrisp.wca.at/tutorials/PathJS-path_test.html|more Examples}
      *
      */
-    function _pathFind( option ) {
+    function _pathFind( option, success, complete ) {
         // console.log('_pathFind');
         var self;
 
         option = option || {};
+        success = success || option.success;
+        complete = complete || option.complete;
 
         self = option.self || this;
         option.limit = option.limit || -1;
@@ -3976,29 +4558,32 @@
         option.values = option.values || {};
         option.values.self = option.values.self || this;
 
-        // option.level = 0;
 
         var object = new Path( option );
+        object.level = 0;
 
-        $$.defineEvent( object );
+        var events = {};
 
-        if ( isFunction( option.success ) ) {
-            object.eventListener({
+        $$.defineEvent( events );
+
+        if ( isFunction( success ) ) {
+            events.eventListener({
                 action: 'success',
                 self: self,
-                listen: option.success
+                listen: success
             });
         }
 
-        if ( isFunction( option.complete ) ) {
-            object.eventListener({
+        if ( isFunction( complete ) ) {
+            events.eventListener({
                 action: 'complete',
                 self: self,
-                listen: option.complete
+                listen: complete
             });
         }
 
-        utilTick( this, _parsePath, object, option.async );
+        // _parsePath.call( this, object, events );
+        utilTick( this, _parsePath, [ object, events ], option.async );
 
         return this;
     }
