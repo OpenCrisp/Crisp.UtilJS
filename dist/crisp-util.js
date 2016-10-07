@@ -1,9 +1,9 @@
-/*! OpenCrisp UtilJS - v0.2.0 - 2015-12-27
+/*! OpenCrisp UtilJS - v0.3.0 - 2016-10-07
 * https://github.com/OpenCrisp/Crisp.UtilJS
-* Copyright (c) 2015 Fabian Schmid; Licensed MIT */
-/*! OpenCrisp BaseJS - v0.5.2 - 2015-12-26
+* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
+/*! OpenCrisp BaseJS - v0.7.2 - 2016-10-07
 * https://github.com/OpenCrisp/Crisp.BaseJS
-* Copyright (c) 2015 Fabian Schmid; Licensed MIT */
+* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
 /**
  * Basic Crisp functions
  * @namespace       util
@@ -34,6 +34,43 @@
      *  toType.call('a').replace( regTypeTrim, '$1' ); // 'String'
      */
     var regTypeTrim = /^\[object ([a-z]+)\]$/i;
+
+    /**
+     * @private
+     * @type {external:Array}
+     * @memberOf util
+     */
+    var typeOfUndefined     = ['global', 'Null', 'DOMWindow', 'Window'];
+
+    var typeNameBoolean     = 'Boolean';
+    var typeNameDate        = 'Date';
+    var typeNameFunction    = 'Function';
+    var typeNameNumber      = 'Number';
+    var typeNameRegExp      = 'RegExp';
+    var typeNameString      = 'String';
+    var typeNameUndefined   = 'Undefined';
+
+
+
+    function toType( object ) {
+        var type = toTypeString.call( object ).replace( regTypeTrim, "$1" );
+
+        if ( typeOfUndefined.indexOf( type ) !== -1 ) {
+            type = typeNameUndefined;
+        }
+
+        return type;
+    }
+
+    function isType( object, type ) {
+        if ( type === 'field' ) {
+            return isType( object, typeNameString ) || isType( object, typeNameNumber ) || isType( object, typeNameBoolean ) || isType( object, typeNameDate ) || isType( object, typeNameRegExp );
+        }
+        else {
+            return toType( object ) === type;
+        }
+    }
+
 
 
     /**
@@ -80,27 +117,8 @@
 
         callback.apply( self, args );
 
-        if ( typeof opt.complete === 'function' ) {
+        if ( isType( opt.complete, typeNameFunction ) ) {
             opt.complete.apply( self, args );
-        }
-    }
-
-    function toType( object ) {
-        var type = toTypeString.call( object ).replace( regTypeTrim, "$1" );
-
-        if ( ['global', 'Null', 'DOMWindow'].indexOf( type ) !== -1 ) {
-            type = 'Undefined';
-        }
-
-        return type;
-    }
-
-    function isType( object, type ) {
-        if ( type === 'field' ) {
-            return isType( object, 'String' ) || isType( object, 'Number' ) || isType( object, 'Boolean' ) || isType( object, 'Date' ) || isType( object, 'RegExp' );
-        }
-        else {
-            return toType( object ) === type;
         }
     }
 
@@ -166,13 +184,13 @@
             }
 
             if ( obj ) {
-                if ( !this.isType( parent[ parts[length] ], "Undefined" ) ) {
+                if ( !isType( parent[ parts[length] ], typeNameUndefined ) ) {
                     throw new Error("Can't overwrite '" + name + "' of defined!");
                 }
 
                 parent[ parts[length] ] = obj;
             }
-            else if ("undefined" === typeof parent[parts[length]]) {
+            else if ( isType( parent[parts[length]], typeNameUndefined ) ) {
                 parent[ parts[length] ] = {};
             }
 
@@ -238,23 +256,6 @@
 
             return self;
         },
-
-
-        /**
-         * @deprecated use {module:BaseJS.type}
-         * @function module:BaseJS.toType
-         * @param       {AnyItem} object
-         */
-        toType: toType,
-
-
-        /**
-         * @deprecated use {module:BaseJS.type}
-         * @function module:BaseJS.isType
-         * @param       {AnyItem}         object
-         * @param       {external:String} type
-         */
-        isType: isType,
 
 
         /**
@@ -355,27 +356,6 @@
 
 
         /**
-         * @deprecated
-         * @param       {external:String} name name of Math Function
-         * 
-         * @this        module:BaseJS
-         * @return      {external:Number}
-         *
-         * @memberOf    module:BaseJS
-         *
-         * @see external:String#toMath
-         * 
-         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#tomath|use toMath}
-         *
-         * @example
-         * Crisp.toMath.call( -1, 'abs'); // 1
-         */
-        toMath: function( name ) {
-            console.warn('Crisp.toMath is not longer supportet! Use Crisp.math');
-            return Math[ name ].call( Math, this );
-        },
-
-        /**
          * @param       {external:String} name name of Math Function
          * 
          * @this        module:BaseJS
@@ -391,51 +371,13 @@
          * Crisp.math.call( -1, 'abs'); // 1
          */
         math: function( name ) {
-            return Math[ name ].call( Math, this );
-        },
+            var args = [this];
 
+            arguments.xEach({ start: 1 }, function (item) {
+                args.push(item);
+            });
 
-        /**
-         * create JSON data format
-         * 
-         * @deprecated change to {@linkcode module:BaseJS.to|Crisp.to('json')}
-         * 
-         * @param       {external:Boolean} prity=false
-         * 
-         * @this        module:BaseJS
-         * @returns     {external:String} converted JavaScript Object
-         * 
-         * @memberOf    module:BaseJS
-         *
-         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#tojson|use toJson}
-         */
-        toJson: function( prity ) {
-            console.warn('Crisp.toJson is not longer supportet! Use Crisp.to');
-            return prity ? JSON.stringify( this, null, "\t" ) : JSON.stringify( this );
-        },
-
-
-        /**
-         * parse this.toString() to JavaScript Objects
-         * 
-         * @deprecated change to {@linkcode module:BaseJS.parse|Crisp.parse('json')}
-         * 
-         * @this        module:BaseJS|AnyItem
-         * @return      {AnyItem} JavaScript Objects
-         * 
-         * @memberOf    module:BaseJS
-         *
-         * @tutorial {@link http://opencrisp.wca.at/tutorials/BaseJS_test.html#parsejson|use parseJson}
-         *
-         * @example <caption>create a copy of {@link module:BaseJS} with {@link AnyItem}</caption>
-         * Crisp.parseJson(); 
-         *
-         * @example <caption>parse {@link AnyItem} to {@link external:String} and crate a new JavaScript object of {@link AnyItem}</caption>
-         * Crisp.parseJson.call('{"a":"A"}'); // { "a": "A" }
-         */
-        parseJson: function() {
-            console.warn('Crisp.parseJson is not longer supportet! Use Crisp.parse');
-            return JSON.parse( this.toString() );
+            return Math[ name ].apply( Math, args );
         }
 
     };
@@ -471,7 +413,7 @@
      * @example
      * var End = Crisp.ns('util.control.End');
      *
-     * // tigger an End throw
+     * // trigger an End throw
      * throw new End();
      *
      * // use in a try Block
@@ -488,6 +430,20 @@
      * }
      */
     $$.ns('util.control.End', function() {});
+
+
+    /**
+     * only a Noop controller without aktivities
+     * @function util.control.Noop
+     *
+     * @example
+     * var Noop = Crisp.ns('util.control.Noop');
+     *
+     * ['A','B'].xEach({}, Noop, function complete() {
+     *     // do wath you wan at the end of each
+     * });
+     */
+    $$.ns('util.control.Noop', function() {});
 
 })(Crisp);
 
@@ -594,32 +550,32 @@
 
     var Break = $$.ns('util.control.Break');
     var End = $$.ns('util.control.End');
-    var utilTack = $$.utilTack;
+    // var utilTack = $$.utilTack;
 
-    
+
     /**
      * add one or more items/arrays for concat in Array.
-     * empty Arrays and undefined items are ignored 
-     * 
+     * empty Arrays and undefined items are ignored
+     *
      * @function external:Array.prototype.xAdd
-     * 
+     *
      * @param {...AnyItem} item one or more of args
-     * 
+     *
      * @this module:EventJS
      * @return {module:EventJS}
-     * 
+     *
      * @example
      * // standard
      * [].xAdd('a'); // ['a']
      * [].xAdd( 'a', 'b' ); // ['a','b']
      * [].xAdd([ 'a', 'b' ]); // ['a','b']
      * [].xAdd(['a'], ['b']); // ['a','b']
-     * 
+     *
      * // empty items
      * [].xAdd(); // []
      * [].xAdd([]); // []
      * [].xAdd(['a'], []); // ['a']
-     * 
+     *
      * // undefined items
      * [].xAdd( undefined ); // []
      * [].xAdd( undefined, 'b' ); // ['b']
@@ -631,13 +587,12 @@
             m = arguments.length,
             a;
 
-        for (; i<m; i+=1 ) {
+        for (; i < m; i += 1) {
             a = arguments[i];
 
-            if ( $$.isType( a, 'Array' ) ) {
-                xAddArray.apply( this, a );
-            }
-            else if ( a !== undefined ) {
+            if ($$.type.call(a, 'Array')) {
+                xAddArray.apply(this, a);
+            } else if (a !== undefined) {
                 this.push(a);
             }
         }
@@ -645,7 +600,7 @@
         return this;
     }
 
-    Object.defineProperty( Array.prototype, 'xAdd', {
+    Object.defineProperty(Array.prototype, 'xAdd', {
         value: xAddArray
     });
 
@@ -653,17 +608,17 @@
     /**
      * call of each Array items with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
      * and execute <code>option.success</code> and/or <code>option.complete</code> with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
-     * 
+     *
      * @function external:Array.prototype.xEach
-     * 
+     *
      * @param {external:Object}         option
      * @param {util.utilTickCallback}   option.success          callback function for execute each item with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
      * @param {AnyItem}                 [option.self]           use Object for .call() the <code>option.success</code> an <code>option.complete</code> function
      * @param {util.utilTickCallback}   [option.complete]       callback function for exeute on the end of xEach with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
      * @param {external:Boolean}        [option.async]          enable asynchronus for call of each Array items with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
-     * @param {external:Number}         [option.start=0]        start index of each 
+     * @param {external:Number}         [option.start=0]        start index of each
      * @param {external:Number}         [option.limit=length]   limit items of each
-     * 
+     *
      * @this external:Array
      * @return {external:Array}
      *
@@ -674,7 +629,7 @@
      * @example
      * ['A','B'].xEach({
      *   success: function( item, index ) {
-     *     // return; go to the next item 
+     *     // return; go to the next item
      *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
@@ -689,13 +644,13 @@
      * // complete
      * // end
      *
-     * 
+     *
      * @example
      * // async
      * ['A','B'].xEach({
      *   async: true,
      *   success: function( item, index ) {
-     *     // return; go to the next item 
+     *     // return; go to the next item
      *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
@@ -710,65 +665,63 @@
      * // success: 1 B
      * // complete
      */
-    function xEachArray( option, success, picker ) {
+    function xEachArray(option, success, picker) {
         var index,
-        
+
             i = 0,
             reverse = 1,
             length = this.length,
-            start = option.start ? Number( option.start ) : 0,
-            limit = option.limit === undefined ? length : Number( option.limit );
+            start = option.start ? Number(option.start) : 0,
+            limit = option.limit === undefined ? length : Number(option.limit);
 
-        
-        if ( limit <= 0 ) {
+
+        if (limit <= 0) {
             limit = length;
         }
 
-        if ( start < 0 ) {
+        if (start < 0) {
             start = length + start;
         }
 
-        if ( start + limit > length ) {
+        if (start + limit > length) {
             limit -= start + limit - length;
         }
 
-        if ( start < 0 ) {
+        if (start < 0) {
             start = 0;
             limit = length;
         }
 
-        if ( option.reverse ) {
+        if (option.reverse) {
             reverse = -1;
             start -= length + reverse;
         }
 
-        for (; i<limit; i+=1 ) {
+        for (; i < limit; i += 1) {
             try {
-                index = ( i + start ) * reverse;
+                index = (i + start) * reverse;
 
-                success.call( option.self, this[ index ], index, picker );
+                success.call(option.self, this[index], index, picker);
             } catch (e) {
-                if ( e instanceof Break ) {
-                    if ( option.reverse && option.limit ) {
+                if (e instanceof Break) {
+                    if (option.limit && (option.reverse || (index < length && limit < length))) {
                         limit += 1;
                     }
-                }
-                else if ( e instanceof End || index < 0 ) {
+                } else if (e instanceof End || index < 0) {
                     return this;
-                }
-                else {
+                } else {
                     throw e;
                 }
             }
         }
-        
+
         return this;
     }
 
     $$.xEachArray = xEachArray;
 
-    Object.defineProperty( Array.prototype, 'xEach', {
-        value: utilTack( xEachArray )
+    Object.defineProperty(Array.prototype, 'xEach', {
+        value: $$.utilTack(xEachArray)
     });
 
 })(Crisp);
@@ -822,6 +775,87 @@
 
 // })(Crisp);
 
+(function() {
+// (function($$) {
+
+    // var Break = $$.ns('util.control.Break');
+    // var End = $$.ns('util.control.End');
+
+    
+    /**
+    * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/round
+    * 
+    * Decimal adjustment of a number.
+    *
+    * @param {String}  type  The type of adjustment.
+    * @param {Number}  value The number.
+    * @param {Integer} exp   The exponent (the 10 logarithm of the adjustment base).
+    * @returns {Number} The adjusted value.
+    */
+    function decimalAdjust(type, value, exp) {
+        // If the exp is undefined or zero...
+        if (typeof exp === 'undefined' || +exp === 0) {
+            return Math[type](value);
+        }
+        value = +value;
+        exp = +exp;
+        // If the value is not a number or the exp is not an integer...
+        if (isNaN(value) || !(typeof exp === 'number' && exp % 1 === 0)) {
+            return NaN;
+        }
+        // Shift
+        value = value.toString().split('e');
+        value = Math[type](+(value[0] + 'e' + (value[1] ? (+value[1] - exp) : -exp)));
+        // Shift back
+        value = value.toString().split('e');
+        return +(value[0] + 'e' + (value[1] ? (+value[1] + exp) : exp));
+    }
+
+
+    /**
+     * Decimal round
+     * @function external:Math.round10
+     *
+     * @param {external:Number} value
+     * @param {external:Number} exp
+     */
+    if (!Math.round10) {
+        Math.round10 = function(value, exp) {
+            return decimalAdjust('round', value, exp);
+        };
+    }
+
+
+    /**
+     * Decimal floor
+     * @function external:Math.floor10
+     *
+     * @param {external:Number} value
+     * @param {external:Number} exp
+     */
+    if (!Math.floor10) {
+        Math.floor10 = function(value, exp) {
+            return decimalAdjust('floor', value, exp);
+        };
+    }
+
+
+    /**
+     * Decimal ceil
+     * @function external:Math.ceil10
+     *
+     * @param {external:Number} value
+     * @param {external:Number} exp
+     */
+
+    if (!Math.ceil10) {
+        Math.ceil10 = function(value, exp) {
+           return decimalAdjust('ceil', value, exp);
+        };
+    }
+
+})(Crisp);
+
 (function($$) {
 
     // var Break = $$.ns('util.control.Break');
@@ -843,28 +877,9 @@
      * Number.isInteger(0.5); // false
      */
     Number.isInteger = Number.isInteger || function(value) {
-        return $$.isType( value, "Number" ) && isFinite(value) && Math.floor(value) === value;
+        return $$.type.call( value, "Number" ) && isFinite(value) && Math.floor(value) === value;
     };
 
-
-    /**
-     * @deprecated use .xMath()
-     * @function external:Number.prototype.toMath
-     * @implements {module:BaseJS.toMath}
-     * 
-     * @param {external:String} name name of Math Function
-     *
-     * @this external:Number
-     * @return {external:Math} return Math[name].apply(this, thisArg)
-     *
-     * @example
-     * (1).toMath('abs'); // 1
-     * (-1).toMath('abs'); // 1
-     * (-0.1).toMath('abs'); // 0.1
-     */
-    Object.defineProperty( Number.prototype, 'toMath', {
-        value: $$.toMath
-    });
 
     /**
      * @function external:Number.prototype.xMath
@@ -898,9 +913,6 @@
      * (0).xTo(); // '0'
      * (1.5).xTo(); // '1.5'
      */
-    // Object.defineProperty( Number.prototype, 'xTo', {
-    //     value: $$.to
-    // });
 
 })(Crisp);
 
@@ -908,21 +920,21 @@
 
     var Break = $$.ns('util.control.Break');
     var End = $$.ns('util.control.End');
-    var utilTack = $$.utilTack;
+    // var utilTack = $$.utilTack;
 
 
     /**
      * @function external:Object.prototype.toString
      * @see  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
      */
-    
-    
+
+
     /**
      * call of each Object key-items with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
      * and execute <code>option.success</code> and/or <code>option.complete</code> with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
-     * 
+     *
      * @function external:Object.prototype.xEach
-     * 
+     *
      * @param {external:Object}         option
      * @param {util.utilTickCallback}   option.success     callback function for execute each item with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
      * @param {AnyItem}                 [option.self]      use Object for .call() the <code>option.success</code> an <code>option.complete</code> function
@@ -930,7 +942,7 @@
      * @param {external:Boolean}        [option.async]     enable asynchronus for call of each Object key-items with {@linkcode module:BaseJS.utilTick|(async) Crisp.utilTick}
      * @param {external:Number}         [option.start=0]        start index of each
      * @param {external:Number}         [option.limit=length]   limit items of each
-     * 
+     *
      * @this external:Object
      * @return {external:Object}
      *
@@ -941,7 +953,7 @@
      * @example
      * {a:'A',b:'B'}.xEach({
      *   success: function( item, index ) {
-     *     // return; go to the next item 
+     *     // return; go to the next item
      *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
@@ -960,7 +972,7 @@
      * {a:'A',b:'B'}.xEach({
      *   async: true,
      *   success: function( item, index ) {
-     *     // return; go to the next item 
+     *     // return; go to the next item
      *     // throw new Break(); stop each of items
      *     console.log('success:', index, item );
      *   },
@@ -975,72 +987,70 @@
      * // success: b B
      * // complete
      */
-    function xEachObject( option, success, picker ) {
+    function xEachObject(option, success, picker) {
         var index,
-            keys = Object.keys( this ),
+            keys = Object.keys(this),
             i = 0,
             reverse = 1,
             length = keys.length,
-            start = option.start ? Number( option.start ) : 0,
-            limit = option.limit === undefined ? length : Number( option.limit ),
+            start = option.start ? Number(option.start) : 0,
+            limit = option.limit === undefined ? length : Number(option.limit),
             name;
-        
-        if ( limit <= 0 ) {
+
+        if (limit <= 0) {
             limit = length;
         }
 
-        if ( start < 0 ) {
+        if (start < 0) {
             start = length + start;
         }
 
-        if ( start + limit > length ) {
+        if (start + limit > length) {
             limit -= start + limit - length;
         }
 
-        if ( start < 0 ) {
+        if (start < 0) {
             start = 0;
             limit = length;
         }
 
-        if ( option.reverse ) {
+        if (option.reverse) {
             reverse = -1;
             start -= length + reverse;
         }
 
-        for (; i<limit; i+=1 ) {
+        for (; i < limit; i += 1) {
             try {
-                index = ( i + start ) * reverse;
-                name = keys[ index ];
-                success.call( option.self, this[ name ], name, picker );
+                index = (i + start) * reverse;
+                name = keys[index];
+                success.call(option.self, this[name], name, picker);
             } catch (e) {
-                if ( e instanceof Break ) {
-                    if ( option.reverse && option.limit ) {
+                if (e instanceof Break) {
+                    if (option.limit && (option.reverse || (index < length && limit < length))) {
                         limit += 1;
                     }
-                }
-                else if ( e instanceof End || index < 0 ) {
+                } else if (e instanceof End || index < 0) {
                     return this;
-                }
-                else {
+                } else {
                     throw e;
                 }
             }
         }
-        
+
         return this;
     }
 
     $$.xEachObject = xEachObject;
 
-    Object.defineProperty( Object.prototype, 'xEach', {
-        value: utilTack( xEachObject )
+    Object.defineProperty(Object.prototype, 'xEach', {
+        value: $$.utilTack(xEachObject)
     });
 
 
     /**
      * @function external:Object.prototype.xTo
      * @implements {module:BaseJS.to}
-     * 
+     *
      * @param {external:String} [type="json"] data format
      *
      * @this external:Object
@@ -1049,7 +1059,7 @@
      * @example
      * { a: 'A' }.xTo(); // '{"a":"A"}'
      */
-    Object.defineProperty( Object.prototype, 'xTo', {
+    Object.defineProperty(Object.prototype, 'xTo', {
         value: $$.to
     });
 
@@ -1057,7 +1067,7 @@
     /**
      * @function external:Object.prototype.xType
      * @implements {module:BaseJS.type}
-     * 
+     *
      * @param {external:String} [type] JavaScript type
      *
      * @this external:Object
@@ -1067,7 +1077,7 @@
      * (false).xType();          // 'Object'
      * (true).xType('Object');  // 'true'
      */
-    Object.defineProperty( Object.prototype, 'xType', {
+    Object.defineProperty(Object.prototype, 'xType', {
         value: $$.type
     });
 
@@ -1076,31 +1086,26 @@
      * Object to HTTP URL Parameter
      * @return {external:String}
      */
-    Object.defineProperty( Object.prototype, 'toURLParam', {
+    Object.defineProperty(Object.prototype, 'toURLParam', {
         value: function() {
             var ret = [];
 
-            this.xEach({
-                success: function(item, index) {
-                    var str = "";
+            this.xEach({}, function(item, index) {
+                var str = "";
 
-                    if ( $$.isType( item, 'Object' ) ) {
-                        str = item.xTo();
-                    }
-                    else if ( $$.isType( item, 'Array' ) ) {
-                        str = item.xTo();
-                    }
-                    else if ( $$.isType( item, 'Boolean' ) ) {
-                        str = item.xTo();
-                    }
-                    else {
-                        str = item.toString();
-                    }
-
-                    str = index.concat("=", str);
-
-                    ret.push(str);
+                if ($$.type.call(item, 'Object')) {
+                    str = item.xTo();
+                } else if ($$.type.call(item, 'Array')) {
+                    str = item.xTo();
+                } else if ($$.type.call(item, 'Boolean')) {
+                    str = item.xTo();
+                } else {
+                    str = item.toString();
                 }
+
+                str = index.concat("=", str);
+
+                ret.push(str);
             });
 
             return ret.join("&");
@@ -1255,8 +1260,8 @@
 
 })(Crisp);
 
-/*! OpenCrisp CreateJS - v0.2.8 - 2015-12-26
-* Copyright (c) 2015 Fabian Schmid; Licensed MIT */
+/*! OpenCrisp CreateJS - v0.2.12 - 2016-10-07
+* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
 (function($$) {
 
     /**
@@ -1329,17 +1334,11 @@
     }
     
     function utilPrototypeMultiple( options ) {
-        options.xEach({
-            self: this,
-            success: utilPrototypeUnit
-        });
+        options.xEach({ self: this }, utilPrototypeUnit );
     }
 
     function utilPrototype( prototypes ) {
-        prototypes.xEach({
-            self: this,
-            success: utilPrototypeMultiple
-        });
+        prototypes.xEach({ self: this }, utilPrototypeMultiple );
     }
 
 
@@ -1392,53 +1391,6 @@
 
 
 
-    function utilPropertiesUnit( option, name ) {
-        utilProperty.call( this, name, option );
-    }
-    
-    function utilPropertiesMultiple( options ) {
-        options.xEach({
-            self: this,
-            success: utilPropertiesUnit
-        });
-    }
-
-    function utilProperties( properties ) {
-        properties.xEach({
-            self: this,
-            success: utilPropertiesMultiple
-        });
-    }
-
-
-
-
-
-    function utilOptionsUnit( option, name ) {
-        utilProperty.call( this, optionName( name ), option );
-    }
-    
-    function utilOptionsMultiple( options ) {
-        options.xEach({
-            self: this,
-            success: utilOptionsUnit
-        });
-    }
-
-    function utilOptions( options ) {
-        options.xEach({
-            self: this,
-            success: utilOptionsMultiple
-        });
-    }
-
-
-
-
-
-
-
-
 
     function optionName( name ) {
         return defaultSeperator.concat( name, defaultSeperator );
@@ -1453,7 +1405,6 @@
         
         // console.crisp("debug", "insert/update option "+name+" in Object ");
         this[ name ] = value;
-
         return this;
     }
 
@@ -1463,18 +1414,11 @@
     }
 
     function optionListMultiple( options ) {
-        options.xEach({
-            self: this,
-            success: optionListUnit
-        });
+        options.xEach({ self: this }, optionListUnit );
     }
 
     function optionList( options ) {
-        [].xAdd( options ).xEach({
-            self: this,
-            success: optionListMultiple
-        });
-
+        [].xAdd( options ).xEach({ self: this }, optionListMultiple );
         return this;
     }
 
@@ -1500,6 +1444,41 @@
 
         return value;
     }
+
+
+
+
+    function utilPropertiesUnit( option, name ) {
+        utilProperty.call( this, name, option );
+    }
+    
+    function utilPropertiesMultiple( options ) {
+        options.xEach({ self: this }, utilPropertiesUnit );
+    }
+
+    function utilProperties( properties ) {
+        properties.xEach({ self: this }, utilPropertiesMultiple );
+    }
+
+
+
+
+
+    function utilOptionsUnit( option, name ) {
+        utilProperty.call( this, optionName( name ), option );
+    }
+    
+    function utilOptionsMultiple( options ) {
+        options.xEach({ self: this }, utilOptionsUnit );
+    }
+
+    function utilOptions( options ) {
+        options.xEach({ self: this }, utilOptionsMultiple );
+    }
+
+
+
+
 
 
     function objDataEach( item, name ) {
@@ -1594,13 +1573,15 @@
          * @memberOf util.create.prototype
          */
         objData: function( data ) {
-            ( this.objNs('util.props') ? this : data ).xEach({
-                self: {
-                    obj: this,
-                    data: data
+            ( this.objNs('util.props') ? this : data ).xEach(
+                {
+                    self: {
+                        obj: this,
+                        data: data
+                    }
                 },
-                success: objDataEach
-            });
+                objDataEach
+            );
 
             return this;
         },
@@ -1713,10 +1694,10 @@
             pt: []      // multiple inherit prototypes
         };
 
-        ns = ['util.create'].xAdd( option.ns ).xEach({
-            self: inherit,
-            success: createNsEach
-        });
+        ns = ['util.create'].xAdd( option.ns ).xEach(
+            { self: inherit },
+            createNsEach
+        );
 
         utilPrototype.call( Base, inherit.pt.xAdd( option.prototypes ) );
 
@@ -1753,9 +1734,9 @@
 
 
 }(Crisp));
-/*! OpenCrisp EventJS - v0.4.1 - 2015-12-26
+/*! OpenCrisp EventJS - v0.5.1 - 2016-10-07
 * https://github.com/OpenCrisp/Crisp.EventJS
-* Copyright (c) 2015 Fabian Schmid; Licensed MIT */
+* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
 (function($$) {
 
     /**
@@ -1775,9 +1756,9 @@
     var utilTick        = $$.utilTick;
     var stringToRegExp  = RegExp.escape;
     var type            = $$.type;
+    var Break           = $$.ns('util.control.Break');
+    var Noop            = $$.ns('util.control.Noop');
 
-    function noop() {}
-    
 
     /**
      * return "own";
@@ -2283,6 +2264,29 @@
     };
 
 
+    function defaultOption( opt ) {
+        opt = opt || {};
+        opt.event = opt.event || defaultOptionEvent;
+        opt.parent = opt.parent || defaultOptionParent;
+        return opt;
+    }
+
+
+    /**
+     * The hasOwnEvent() method returns a boolean indicating whether the moduleObject has specified the Event module 
+     * @param  {external:Object} moduleObject any Object for initiate EventJS methods
+     * @param  {external:Object} [moduleOption]
+     * @param  {external:String} [moduleOption.event=__event__] name of event cache property
+     * @param  {external:String} [moduleOption.parent=__parent__] name of parent reference property
+     * @return {Boolean}              [description]
+     */
+    function hasOwnEvent( moduleObject, moduleOption ) {
+        moduleOption = defaultOption( moduleOption );
+        return moduleObject.hasOwnProperty( moduleOption.event ) && ( moduleObject[ moduleOption.event ] instanceof Event );
+    }
+
+    $$.hasOwnEvent = hasOwnEvent;
+
 
     /**
      * @private
@@ -2385,6 +2389,30 @@
      */
     function eventRemove( eventObject, propertyEvent ) {
         propertyEvent.remove( eventObject );
+        return this;
+    }
+
+
+
+    function eventResettle( parentObject, propertyEvent ) {
+        var parentListener, item;
+
+        if ( !parentObject || !hasOwnEvent(parentObject) ) {
+            return this;
+        }
+
+        parentListener = parentObject._('event')._listener;
+        
+        for (var i=0, m=parentListener.length; i<m; i+=1) {
+            item = parentListener[i];
+
+            if (item._self === parentObject) {
+                item._self = this;
+            }
+
+            propertyEvent._listener.push(item);
+        }
+        
         return this;
     }
 
@@ -2534,17 +2562,14 @@
          */
         eventRemove: function( eventObject ) {
             return eventRemove.call( this, eventObject, this._( iniEvent ) );
+        },
+
+        eventResettle: function( parentObject ) {
+            return eventResettle.call( this, parentObject, this._( iniEvent ) );
         }
 
     };
 
-
-    function defaultOption( opt ) {
-        opt = opt || {};
-        opt.event = opt.event || defaultOptionEvent;
-        opt.parent = opt.parent || defaultOptionParent;
-        return opt;
-    }
 
     /**
      * Create mothods from EventJS on any Object
@@ -2778,6 +2803,13 @@
                 value: function ( eventObject ) {
                     return eventRemove.call( this, eventObject, this[ moduleOption.event ] );
                 }
+            },
+
+
+            eventResettle: {
+                value: function ( parentObject ) {
+                    return eventResettle.call( this, parentObject, this[ moduleOption.event ] );
+                }
             }
 
         });
@@ -2787,21 +2819,6 @@
 
     $$.defineEvent = defineEvent;
 
-
-    /**
-     * The hasOwnEvent() method returns a boolean indicating whether the moduleObject has specified the Event module 
-     * @param  {external:Object} moduleObject any Object for initiate EventJS methods
-     * @param  {external:Object} [moduleOption]
-     * @param  {external:String} [moduleOption.event=__event__] name of event cache property
-     * @param  {external:String} [moduleOption.parent=__parent__] name of parent reference property
-     * @return {Boolean}              [description]
-     */
-    function hasOwnEvent( moduleObject, moduleOption ) {
-        moduleOption = defaultOption( moduleOption );
-        return moduleObject.hasOwnProperty( moduleOption.event ) && ( moduleObject[ moduleOption.event ] instanceof Event );
-    }
-
-    $$.hasOwnEvent = hasOwnEvent;
 
 
 
@@ -2815,7 +2832,7 @@
             var event = {};
             var picker;
 
-            success = success || noop;
+            success = success || Noop;
             
             $$.defineEvent( event );
 
@@ -2869,6 +2886,12 @@
         });
 
         function note( task ) {
+            if (task instanceof Break) {
+                eventTask.End();
+                eventChanged.End();
+                throw task;
+            }
+
             self.eventTrigger( task );
             eventTask.Note( task );
             eventChanged.Note( task );
@@ -2891,7 +2914,7 @@
         function tackTask( opt, success ) {
             var async;
 
-            success = success || noop;
+            success = success || Noop;
             
             if ( opt.async ) {
                 async = opt.async;
@@ -2908,18 +2931,31 @@
             return this;
         }
 
-        return Object.defineProperty( tackTask, 'task', { value: methodSchema || true });
+        Object.defineProperty( tackTask, 'task', { value: methodSchema || true });
+        Object.defineProperty( tackTask, 'callback', { value: methodCallback });
+
+        return tackTask;
     }
 
     $$.utilTask = utilTask;
 
 })(Crisp);
-/*! OpenCrisp PathJS - v1.0.0 - 2015-12-26
+/*! OpenCrisp PathJS - v1.3.1 - 2016-10-07
 * http://opencrisp.wca.at/docs/util.path.html
-* Copyright (c) 2015 Fabian Schmid; Licensed MIT */
+* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
 (function($$) {
 
     console.log( (function ( _ ) {
+
+        function printFill( str, m, fill ) {
+            fill = fill || ' ';
+            str = ''.concat(str);
+            for ( var i = str.length; i<m; i+=1 ) {
+             str += fill;
+            }
+            return str;
+        }
+
         _.view = function ( self, name, set ) {
             // return;
             // console.warn(self);
@@ -2945,26 +2981,19 @@
             _.log( str );
         };
 
-        function printFill( str, m, fill ) {
-            fill = fill || ' ';
-            str = ''.concat(str);
-            for ( var i = str.length; i<m; i+=1 ) {
-             str += fill;
-            }
-            return str;
-        }
-
         return "set: console.view()";
     })( console ));
 
-    var utilTick        = $$.utilTick;
+    var utilTick      = $$.utilTick;
     var type          = $$.type;
     
 
-    // var Break = $$.ns('util.control.Break');
+    var Break = $$.ns('util.control.Break');
     var End = $$.ns('util.control.End');
-    var EndPath = function() {};
-    function EndPicker() {}
+
+    function BreakPath() {}
+    function EndPath() {}
+    // function EndPicker() {}
 
 
 
@@ -3077,6 +3106,7 @@
     function pathFindEach( node, events, success ) {
         // console.log('type of each', type.call( node.itemEach ) );
         var fn = type.call( node.itemEach, 'Function' ) ? node.itemEach : node.xEach;
+        var self = this;
 
         success = success || function ( doc ) {
             nextTick.call( this, doc, null, events );
@@ -3088,15 +3118,27 @@
                 self: this,
                 reverse: this._revlist
             },
-            success
+            function () {
+                success.apply( self, arguments );
+            }
+            // success
         );
     }
 
     function pathFindEachAll( node, events ) {
-        this.child.exec({ node: node }, events );
+        if ( this.child ) {
+            this.child.exec({ node: node }, events );
+        }
+        else {
+            console.log('node', node );
+            console.log( this );
+        }
 
-        // if ( node.isField() ) {
         if ( !type.call( node, 'Array' ) && !type.call( node, 'Object' ) ) {
+            return;
+        }
+
+        if ( node.isField && node.isField() ) {
             return;
         }
 
@@ -3116,7 +3158,43 @@
          * 
          * @param  {*} node
          */
-        '*': pathFindEach,
+        // '*': pathFindEach,
+        '*': function( node, events ) {
+            var specific = this.specific();
+
+            pathFindEach.call( this, node, events, function (item) {
+                
+                if ( specific ) {
+                    try {
+                        pickValue.call(
+                            this,
+                            specific,
+                            item,
+                            function ( valueNode ) {
+                                // console.log(' spec', valueNode );
+                                if ( valueNode ) {
+                                    this.child.exec({ node: item }, events );
+                                }
+                                else {
+                                    // console.log('* BreakPath')
+                                    throw new BreakPath();
+                                }
+                            },
+                            End
+                        );
+                    }
+                    catch (err) {
+                        if (err instanceof BreakPath) {
+                            throw new Break();
+                        }
+                    }
+                }
+                else {
+                    this.child.exec({ node: item }, events );
+                }
+            });
+
+        },
 
         /**
          * @function util.path.pathFind.'+'
@@ -3126,30 +3204,12 @@
          */
         '+': function( node, events ) {
             // console.log('pathFind.#', node.docPath(), testSpecific );
-            
-            var picker = events.eventPicker({
-                cache: events,
-                action: 'complete',
-                empty: true
-            });
 
             if ( this.child ) {
                 this._specific = this.child.filter;
             }
 
-            pickValue.call(
-                this,
-                this.specific(),
-                node,
-                function ( valueNode ) {
-                    if ( valueNode ) {
-                        this.child.exec({ node: node }, events );
-                    }
-                },
-                function () {
-                    picker.Talk();
-                }
-            );
+            nextTick.call( this.child, node, null, events );
         },
 
         /**
@@ -3160,6 +3220,7 @@
          */
         '#': function( node, events ) {
             var specific = this.specific();
+            // console.log('#', this );
 
             if ( specific ) {
                 pickValue.call(
@@ -3167,7 +3228,7 @@
                     specific,
                     node,
                     function ( valueNode ) {
-                        // console.log(' spec', valueNode, picker._wait );
+                        // console.log(' spec', valueNode );
                         if ( valueNode ) {
                             pathFindEachAll.call( this, node, events );
                         }
@@ -3206,7 +3267,6 @@
      * @memberOf util.path
      */
     function pickValue( ref, node, success, complete ) {
-        var self = this;
 
         if ( !ref ) {
             console.error('pickValue !ref return');
@@ -3218,41 +3278,18 @@
 
         events.eventListener({
             // limit: 1,
-            // self: this,
+            self: this,
             action: 'success',
-            // listen: success
-            listen: function ( doc ) {
-                success.call( self, doc );
-            }
+            listen: success
         });
 
         events.eventListener({
+            self: this,
             action: 'complete',
-            // self: this,
-            // listen: complete
-            listen: function () {
-                complete.call( self );
-            }
+            listen: complete
         });
 
-        try {
-            // console.log(ref);
-            ref.exec({ node: node }, events );
-        }
-        catch ( err ) {
-            if ( err instanceof EndPicker ) {
-                // console.error( err );
-                return;
-            }
-            else if ( err instanceof EndPath ) {
-                // console.error( err );
-                return;
-            }
-
-            // throw new EndPath();
-            // console.error( err );
-            throw err;
-        }
+        ref.exec({ node: node }, events );
     }
 
 
@@ -3343,12 +3380,6 @@
             }
             // (\\]|\\))\\.?
             else if ( score[5] !== undefined ) {
-                    //     complete.call( this );
-                    // }
-                    // else {
-                    //     complete.call( this );
-                    // }
-                    // else {
                 stop = true;
             }
             // (\\d+(?:\\.\\d+)?)(?!\\.|:)
@@ -3373,7 +3404,7 @@
             }
             // \\$([\\w]+)
             else if ( score[12] !== undefined ) {
-                condition.child = new PathValue( condition, this.valueKey(score[12]) );
+                condition.child = new PathValue( condition, this._values, score[12] );
             }
             else {
                 this._index = score.index;
@@ -3427,6 +3458,10 @@
          * @return {*}
          */
         specific: function() {
+            if ( this._specific === null ) {
+                return;
+            }
+
             return this._specific || this.parent('specific');
         }
 
@@ -3612,32 +3647,40 @@
     }
 
 
-    function pickOperator( operator, node, success, complete ) {
+    function pickOperator( operator, nodeFirst, nodeSecond, success, complete ) {
         if ( !operator ) {
-            success.call( this, node );
+            success.call( this, nodeFirst );
             complete.call( this );
+            console.view( this, 'no operator', 2 );
             return;
         }
+
+        // console.view( this, operator, 2 );
+        // console.warn( nodeFirst );
 
         pickValue.call(
             this,
             this.value,
-            node,
+            nodeSecond,
             function ( valueNode ) {
 
                 if ( valueNode instanceof RegExp ) {
-                    node = valueNode.test( node );
+                    nodeFirst = valueNode.test( nodeFirst );
                     valueNode = true;
                 }
 
-                node = pathOperator[ operator ]( node, valueNode );
+                nodeFirst = pathOperator[ operator ]( nodeFirst, valueNode );
 
-                // console.log('-- operator:', operator, node, valueNode );
-                success.call( this, node );
+                // console.warn('-- operator:', operator, nodeFirst, valueNode );
+                success.call( this, nodeFirst );
             },
             complete
         );
+        
+        // console.view( this, operator );
+
     }
+
 
     /**
      * @class
@@ -3697,13 +3740,15 @@
                     this.reverse(),
                     valueNode,
                     function ( reverseNode ) {
-                        // console.log('reverseNode', valueNode );
+                        // console.log('reverseNode', reverseNode );
                         picker.Wait();
                         pickOperator.call(
                             this,
                             this.operator(),
                             reverseNode,
+                            option.node,
                             function ( operatorNode ) {
+                                // console.log('operatorNode', operatorNode );
                                 events.eventTrigger({
                                     action: 'success',
                                     args: operatorNode
@@ -3754,7 +3799,7 @@
     var strPathDoc = '\\s*(?:' +
                 '(\\.)' +                                  // [1]   Parent Doc
         '|' +   '(\\^)?(-?\\d*~\\d*|-\\d+)\\.?' +          // [2,3] Limit items
-        '|' +   '(\\d+|[a-z][a-z\\d\\-]*)\\.?' +           // [4]   Doc Attribute-Name
+        '|' +   '(\\d+|[a-z_][a-z\\d\\-_]*)\\.?' +           // [4]   Doc Attribute-Name
         '|' +   '(\\^)?([*#+])\\.?' +                      // [5,6] Value Node
         '|' +   '\\$([a-z\\d_]+)\\.?' +                    // [7]   Repeat
         '|' +   '(:)' +                                    // [8]   findFunction
@@ -3783,7 +3828,8 @@
         var score = regPathDoc.exec( this._path );
 
         if ( !score ) {
-            return;
+            // console.warn('findPathDoc');
+            return new PathDoc( parent );
         }
 
         this._index = regPathDoc.lastIndex;
@@ -3811,8 +3857,11 @@
         }
         // \\$([a-z\\d_]+)\\.?
         else if ( score[7] !== undefined ) {
+            // console.log('PathDoc:', score[7] );
             obj = new PathDoc( parent, this.valueKey( score[7] ) ).parse();
+            // obj = new PathDoc( parent ).parse();
             obj._valkey = score[7];
+            // obj._values = this._values;
         }
         // (:)
         else if ( score[8] !== undefined ) {
@@ -3962,7 +4011,7 @@
      * @return {*}
      */
     pathLimitProto.exec = function( option, events ) {
-        // console.log('== limit', node );
+        // console.log('== limit', option.node );
         console.view( this, '>~', 1 );
 
         var picker = events.eventPicker({
@@ -3971,21 +4020,42 @@
             empty: true
         });
 
+
         function success( item ) {
+            // nextTick.call( this, item, null, events );
             var specific = this.specific();
- 
+            // // this._specific = null;
+
+            // console.log('limit:', item );
+            // // throw new Break();
+            // // nextTick.call( this, item, null, events );
+            // // return;
+
             if ( specific ) {
-                pickValue.call(
-                    this,
-                    specific,
-                    item,
-                    function ( valueNode ) {
-                        // console.log(' spec', valueNode, picker._wait );
-                        if ( valueNode ) {
-                            nextTick.call( this, item, null, events );
-                        }
+                // console.log( this );
+                try {
+                    pickValue.call(
+                        this,
+                        specific,
+                        item,
+                        function ( valueNode ) {
+                            // console.log(' spec', valueNode, picker._wait, item );
+                            if ( valueNode ) {
+                                nextTick.call( this, item, null, events );
+                            }
+                            else {
+                                throw new BreakPath();
+                            }
+                        },
+                        function () {}
+                    );
+                }
+                catch (err) {
+                    if (err instanceof BreakPath) {
+                        throw new Break();
                     }
-                );
+                }
+
             }
             else {
                 nextTick.call( this, item, null, events );
@@ -4002,6 +4072,8 @@
         if ( type.call( option.node.itemLimit, 'Function' ) ) {
             opt.start = this._start;
             opt.limit = this._limit;
+
+            // console.log('opt:', opt );
 
             // console.log('limit.exec itemLimit', opt );
             // option.node.itemLimit( opt, success, complete );
@@ -4086,34 +4158,51 @@
     pathDocProto.exec = function( option, events ) {
         // console.log('PathDoc.exec', this.attr() );
         var self = this;
-        
+
         var picker = events.eventPicker({
             cache: events,
             action: 'complete',
             empty: true
         });
+
+        if ( !type.call(self.attr(), 'Undefined') && type.call(option.node.itemFetch, 'Function') ) {
+            return option.node.itemFetch(
+                { name: self.attr() },
+                function (doc) {
+                    nextTick.call( self, doc, picker, events );
+                },
+                function () {
+                    picker.Talk();
+                }
+            );
+        }
+
+        if (
+                (
+                    type.call(option.node, 'Object') && 
+                    Object.keys(option.node).indexOf( self.attr() ) !== -1
+                ) ||
+                (
+                    type.call(option.node, 'Array') && 
+                    option.node[ self.attr() ]
+                )
+            ) {
+            
+            // console.log( self.attr(), option.node[ self.attr() ] );
+            nextTick.call( self, option.node[ self.attr() ], picker, events );
+            // picker.Talk();
+            // return;
+        }
+        else if ( self._valkey ) {
+            // console.log('value', self._values[ self._valkey ].is.toString() );  
+            option.node = self.child.exec({ node: self.attr() }, events);
+            // option.node = self.child.exec({ node: self._values[ self._valkey ] }, events);
+        }
+        else if ( !self.attr() ) {
+            nextTick.call( self, option.node, picker, events );
+        }
         
-        if ( !type.call( option.node[ this.attr() ], 'Undefined' ) ) {
-            nextTick.call( this, option.node[ this.attr() ], picker, events );
-            picker.Talk();
-            return;
-        }
-
-        if ( this._valkey ) {
-            option.node = this.child.exec({ node: this.attr() }, events);
-            picker.Talk();
-            return;
-        }
-        else if ( !type.call( option.node.pathInclude, 'Function' ) ) {
-            picker.Talk();
-            return;
-        }
-
-
-        option.node.pathInclude( this.attr(), function( item ) {
-            nextTick.call( self, item, picker, events );
-            picker.Talk();
-        });
+        picker.Talk();
     };
 
     /**
@@ -4314,10 +4403,11 @@
      *
      * @memberOf util.path
      */
-    function PathValue( parent, value ) {
+    function PathValue( parent, value, key ) {
         this._parent = parent;
         // Object.defineProperty( this, '_parent', { value: parent });
         this._value = value;
+        this._key = key;
     }
 
     var pathValueProto = PathValue.prototype = new PathBaseProto();
@@ -4334,7 +4424,10 @@
             empty: true
         });
 
-        nextTick.call( this, this._value, picker, events );
+        var value = this._key ? this._value[ this._key ] : this._value;
+        // console.log('pathValueProto', this._key, value );
+
+        nextTick.call( this, value, picker, events );
         picker.Talk();
     };
 
@@ -4343,6 +4436,7 @@
 
 
     function nextTick( node, picker, events ) {
+        var end;
         // console.log('nextTick:', node );
 
         if ( this.child ) {
@@ -4357,15 +4451,25 @@
             return;
         }
 
-        events.eventTrigger({
-            action: 'success',
-            // path: path,
-            args: [ node ]
-        });
+        try {
+            events.eventTrigger({
+                action: 'success',
+                // path: path,
+                args: [ node ]
+            });
+        }
+        catch (err) {
+            if (err instanceof Break) {
+                end = true;
+            }
+            else {
+                throw err;
+            }
+        }
 
         // console.log('--- nextTick', reason._count, reason._limit );
 
-        if ( reason._limit !== -1 && reason._count >= reason._limit ) {
+        if ( end || ( reason._limit !== -1 && reason._count >= reason._limit ) ) {
             // console.log('nextTick.limit', reason._limit, picker.note.list.own );
             
             picker = events.eventPicker({
@@ -4398,9 +4502,11 @@
             condition.exec({ node: this }, events );
         }
         catch (err) {
+            // console.log('ERR _parsePath'  );
 
             if ( err instanceof EndPath ) {
-                console.error( err );
+                // console.log('EndPath');
+                // console.error( err );
                 return;
             }
             else if ( reason._preset !== undefined ) {
@@ -4415,8 +4521,14 @@
                 return;
             }
             // else if ( err instanceof Break ) {
+            //     console.log('Break');
             //     return;
             // }
+            else if ( err instanceof End ) {
+                // console.log('_parsePath End');
+                return;
+            }
+            console.log('other');
 
             throw err;
         }
@@ -4453,14 +4565,31 @@
          * @return {*}
          */
         valueKey: function( key ) {
-            return this._values[ key ];
+            var val = this._values[ key ];
+
+            if ( type.call(val, 'Function') ) {
+                return val.call( this );
+            }
+            else {
+                return val;
+            }
+        }, 
+        rootSelf: function () {
+            var note = this._values.self;
+
+            while (note.__parent__) {
+                note = note.__parent__;
+            }
+
+            return note;
         }
     };
 
 
     /**
      * _pathNode
-     * 
+     *
+     * @deprecated use _pathFinde
      * @private
      * 
      * @param  {external:Object} option
@@ -4557,6 +4686,9 @@
         
         option.values = option.values || {};
         option.values.self = option.values.self || this;
+        option.values.root = option.values.root || function () {
+            return this.rootSelf();
+        };
 
 
         var object = new Path( option );
@@ -4591,6 +4723,7 @@
     /**
      * _pathExists
      * @private
+     * @deprecated use _pathFind
      * 
      * @param  {external:String} path
      *
@@ -4613,6 +4746,7 @@
     $$.ns('util.path').prototypes = {
 
         /**
+         * @deprecated use pathFind
          * @function
          * @implements {util.path._pathNode}
          * @memberOf   util.path.prototype
@@ -4631,6 +4765,7 @@
         pathFind: _pathFind,
 
         /**
+         * @deprecated use pathFind
          * @function
          * @implements {util.path._pathExists}
          * @memberOf   util.path.prototype
@@ -4665,6 +4800,7 @@
         Object.defineProperties( moduleObject, {
 
             /**
+             * @deprecated use pathFind
              * @function
              * @implements {util.path._pathNode}
              * @memberOf module:PathJS
@@ -4683,6 +4819,7 @@
             },
 
             /**
+             * @deprecated use pathFind
              * @function
              * @implements {util.path._pathExists}
              * @memberOf module:PathJS
