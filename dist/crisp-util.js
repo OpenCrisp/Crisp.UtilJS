@@ -1,9 +1,9 @@
-/*! OpenCrisp UtilJS - v0.3.0 - 2016-10-07
+/*! OpenCrisp UtilJS - v0.3.1 - 2017-07-02
 * https://github.com/OpenCrisp/Crisp.UtilJS
-* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
-/*! OpenCrisp BaseJS - v0.7.2 - 2016-10-07
+* Copyright (c) 2017 Fabian Schmid; Licensed [object Object] */
+/*! OpenCrisp BaseJS - v0.7.3 - 2017-07-01
 * https://github.com/OpenCrisp/Crisp.BaseJS
-* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
+* Copyright (c) 2017 Fabian Schmid; Licensed [object Object] */
 /**
  * Basic Crisp functions
  * @namespace       util
@@ -1260,8 +1260,8 @@
 
 })(Crisp);
 
-/*! OpenCrisp CreateJS - v0.2.12 - 2016-10-07
-* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
+/*! OpenCrisp CreateJS - v0.2.13 - 2017-07-02
+* Copyright (c) 2017 Fabian Schmid; Licensed [object Object] */
 (function($$) {
 
     /**
@@ -1734,9 +1734,9 @@
 
 
 }(Crisp));
-/*! OpenCrisp EventJS - v0.5.1 - 2016-10-07
+/*! OpenCrisp EventJS - v0.5.2 - 2017-07-01
 * https://github.com/OpenCrisp/Crisp.EventJS
-* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
+* Copyright (c) 2017 Fabian Schmid; Licensed [object Object] */
 (function($$) {
 
     /**
@@ -2940,9 +2940,9 @@
     $$.utilTask = utilTask;
 
 })(Crisp);
-/*! OpenCrisp PathJS - v1.3.1 - 2016-10-07
+/*! OpenCrisp PathJS - v1.3.2 - 2017-07-02
 * http://opencrisp.wca.at/docs/util.path.html
-* Copyright (c) 2016 Fabian Schmid; Licensed [object Object] */
+* Copyright (c) 2017 Fabian Schmid; Licensed [object Object] */
 (function($$) {
 
     console.log( (function ( _ ) {
